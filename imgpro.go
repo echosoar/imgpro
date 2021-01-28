@@ -7,8 +7,9 @@ import (
 
 // Run run
 func Run(filePath string, features []string) img.Result {
-	core := img.New()
-	core.Features = features
+	core := img.New(features)
 	pro.SizeProcessor(core)
-	return core.Run(filePath)
+	pro.TypeProcessor(core)
+	core.Run(filePath)
+	return core.GetResult()
 }

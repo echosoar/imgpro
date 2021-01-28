@@ -10,11 +10,11 @@ import (
 func SizeProcessor(imgCore *img.Core) {
 	imgCore.Bind(&img.Processor{
 		Keys:   []string{"size"},
-		Runner: runner,
+		Runner: sizeRunner,
 	})
 }
 
-func runner(core *img.Core) map[string]img.Value {
+func sizeRunner(core *img.Core) map[string]img.Value {
 	file, err := os.Stat(core.FilePath)
 	if err != nil {
 		if os.IsNotExist(err) {

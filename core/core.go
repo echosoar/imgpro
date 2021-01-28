@@ -2,10 +2,12 @@ package imgtype
 
 // Core 内核
 type Core struct {
-	Features     []string
-	FilePath     string
-	processorMap map[string]*Processor
-	result       map[string]Value
+	Features []string
+	FilePath string
+	Result   map[string]Value
+
+	processorMap  map[string]*Processor
+	originFeature []string
 }
 
 // Result 结果
@@ -13,8 +15,10 @@ type Result map[string]Value
 
 // Value 值
 type Value struct {
-	Type ValueType
-	Int  int64
+	Type   ValueType
+	Int    int64
+	String string
+	Bytes  []byte
 }
 
 // ValueType 值类型
@@ -23,6 +27,10 @@ type ValueType int
 const (
 	// ValueTypeInt int
 	ValueTypeInt ValueType = 0
+	// ValueTypeString string
+	ValueTypeString ValueType = 1
+	// ValueTypeBytes bytes
+	ValueTypeBytes ValueType = 2
 )
 
 // Processor 处理器
@@ -43,19 +51,26 @@ func (core *Core) Bind(processor *Processor) {
 }
 
 // Run 运行
-func (core *Core) Run(filePath string) Result {
+func (core *Core) Run(filePath string) {
 	core.FilePath = filePath
 	core.Features = removeDuplicateStringValues(core.Features)
-	core.result = make(map[string]Value)
+	core.Result = make(map[string]Value)
 	for _, feature := range core.Features {
 		core.runProcessor(feature)
 	}
+}
 
-	return core.result
+// GetResult 获取结果
+func (core *Core) GetResult() Result {
+	result := make(map[string]Value)
+	for _, feature := range core.originFeature {
+		result[feature] = core.Result[feature]
+	}
+	return result
 }
 
 func (core *Core) runProcessor(feature string) {
-	_, valueExists := core.result[feature]
+	_, valueExists := core.Result[feature]
 	if valueExists {
 		return
 	}
@@ -70,13 +85,15 @@ func (core *Core) runProcessor(feature string) {
 
 	result := processor.Runner(core)
 	for feat, value := range result {
-		core.result[feat] = value
+		core.Result[feat] = value
 	}
 }
 
 // New 实例化core
-func New() *Core {
+func New(features []string) *Core {
 	return &Core{
-		processorMap: make(map[string]*Processor),
+		Features:      features,
+		originFeature: features,
+		processorMap:  make(map[string]*Processor),
 	}
 }
