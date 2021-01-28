@@ -2,7 +2,7 @@ package imgtype
 
 // Core 内核
 type Core struct {
-	Features []string
+	features []string
 	FilePath string
 	Result   map[string]Value
 
@@ -46,16 +46,16 @@ func (core *Core) Bind(processor *Processor) {
 		core.processorMap[feature] = processor
 	}
 	for _, condition := range processor.Precondition {
-		core.Features = append(core.Features, condition)
+		core.features = append(core.features, condition)
 	}
 }
 
 // Run 运行
 func (core *Core) Run(filePath string) {
 	core.FilePath = filePath
-	core.Features = removeDuplicateStringValues(core.Features)
 	core.Result = make(map[string]Value)
-	for _, feature := range core.Features {
+	core.features = removeDuplicateStringValues(core.features)
+	for _, feature := range core.features {
 		core.runProcessor(feature)
 	}
 }
@@ -92,7 +92,7 @@ func (core *Core) runProcessor(feature string) {
 // New 实例化core
 func New(features []string) *Core {
 	return &Core{
-		Features:      features,
+		features:      features,
 		originFeature: features,
 		processorMap:  make(map[string]*Processor),
 	}
