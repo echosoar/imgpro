@@ -15,13 +15,13 @@ import (
 func main() {
   result := imgpro.Run("./test/imgs/go.png", []string{"size", "type"})
   
-	if result["size"].Int != 60746 {
-		panic("size error")
+  if result["size"].Int != 60746 {
+    panic("size error")
   }
   
   if result["type"].String != "png" {
-		panic("type error")
-	}
+    panic("type error")
+  }
 }
 ```
 
