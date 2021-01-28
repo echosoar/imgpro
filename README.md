@@ -23,5 +23,6 @@ func main() {
 - [ ] exif info
 - [ ] qrcode
 - [ ] color
-- [ ] face size
-- [ ] face position
+- [ ] person/face detection
+- [ ] object detection
+- [ ] ocr
