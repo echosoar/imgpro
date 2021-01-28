@@ -6,8 +6,8 @@ import (
 	img "github.com/echosoar/imgpro/core"
 )
 
-// BindSize bin size processor
-func BindSize(imgCore *img.Core) {
+// SizeProcessor bin size processor
+func SizeProcessor(imgCore *img.Core) {
 	imgCore.Bind(&img.Processor{
 		Keys:   []string{"size"},
 		Runner: runner,

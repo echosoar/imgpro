@@ -9,6 +9,6 @@ import (
 func Run(filePath string, features []string) img.Result {
 	core := img.New()
 	core.Features = features
-	pro.BindSize(core)
+	pro.SizeProcessor(core)
 	return core.Run(filePath)
 }
