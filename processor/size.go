@@ -27,7 +27,7 @@ func sizeRunner(core *img.Core) map[string]img.Value {
 	return map[string]img.Value{
 		"size": {
 			Type: img.ValueTypeInt,
-			Int:  size,
+			Int:  int(size),
 		},
 	}
 }

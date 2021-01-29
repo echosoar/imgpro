@@ -31,8 +31,10 @@ func main() {
 - [ ] width/height
 - [ ] image rgba data
 - [ ] exif info
-- [ ] qrcode
-- [ ] color
+- [ ] qrcode recognition
+- [ ] hue
+- [ ] type conversion
+- [ ] compress
 - [ ] person/face detection
 - [ ] object detection
 - [ ] ocr

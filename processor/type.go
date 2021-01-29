@@ -23,7 +23,7 @@ func typeRunner(core *img.Core) map[string]img.Value {
 		panic(err)
 	}
 	defer f.Close()
-	size := int(core.Result["size"].Int)
+	size := core.Result["size"].Int
 	readSize := 14 // for webp
 	if size < readSize {
 		readSize = size
@@ -45,7 +45,7 @@ func typeRunner(core *img.Core) map[string]img.Value {
 	} else if bytes.HasPrefix(fileBytes, []byte("\x89PNG\x0D\x0A\x1A\x0A")) {
 		imgType = "png"
 	} else if bytes.HasPrefix(fileBytes, []byte("\xFF\xD8\xFF")) {
-		imgType = "jpeg"
+		imgType = "jpg"
 	} else if len(fileBytes) >= 14 {
 		isWebp := func() bool {
 			mask := []byte("\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF")

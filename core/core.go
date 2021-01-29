@@ -2,11 +2,11 @@ package imgtype
 
 // Core 内核
 type Core struct {
-	features []string
 	FilePath string
 	Result   map[string]Value
 
 	processorMap  map[string]*Processor
+	features      []string
 	originFeature []string
 }
 
@@ -16,7 +16,7 @@ type Result map[string]Value
 // Value 值
 type Value struct {
 	Type   ValueType
-	Int    int64
+	Int    int
 	String string
 	Bytes  []byte
 }
