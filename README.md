@@ -26,15 +26,20 @@ func main() {
 ```
 
 ### Features
-- [x] size
-- [x] image type [support: png / jpg / bmp / gif / webp]
-- [ ] width/height
-- [ ] image rgba data
-- [ ] exif info
-- [ ] qrcode recognition
-- [ ] hue
-- [ ] type conversion
-- [ ] compress
-- [ ] person/face detection
-- [ ] object detection
-- [ ] ocr
+
+| Feature | PNG | JPG | GIF | BMP | WebP |
+| --- | --- | --- | --- | --- |
+| size | ✅ | ✅ | ✅ | ✅ | ✅ | 
+| type detect | ✅ | ✅ | ✅ | ✅ | ✅ | 
+| width/height | ✅ | ✅ | ✅ |  |  | 
+| rgba data |
+| exif info |
+| qrcode recognition |
+| hue |
+| person detect |
+| object detect |
+| ocr |
+| face detect |
+| compress |
+| type conversion |
+
