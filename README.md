@@ -28,7 +28,7 @@ func main() {
 ### Features
 
 | Feature | PNG | JPG | GIF | BMP | WebP |
-| --- | --- | --- | --- | --- |
+| --- | :---: | :---: | :---: | :---: | :---: |
 | size | ✅ | ✅ | ✅ | ✅ | ✅ | 
 | type detect | ✅ | ✅ | ✅ | ✅ | ✅ | 
 | width/height | ✅ | ✅ | ✅ |  |  | 
