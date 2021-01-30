@@ -3,6 +3,7 @@ package processor
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	"image"
 
 	// Register to image
@@ -59,14 +60,15 @@ func whRunner(core *img.Core) map[string]img.Value {
 		reader := bufio.NewReader(f)
 		count, readErr := reader.Read(fileBytes)
 		if readErr == nil && count >= 15 {
+			fmt.Println(fileBytes[15])
 			switch fileBytes[15] {
 			case 32:
-				width = int(binary.LittleEndian.Uint16(fileBytes[24:26])) & 0x3fff
-				height = int(binary.LittleEndian.Uint16(fileBytes[26:28])) & 0x3fff
+				width = int(binary.LittleEndian.Uint16(fileBytes[26:28])) & 0x3fff
+				height = int(binary.LittleEndian.Uint16(fileBytes[28:30])) & 0x3fff
 			case 76:
 				// 后 14 位 为 width
 				// 前 14 位 为 height
-				bit := int(binary.LittleEndian.Uint32(fileBytes[17:21]))
+				bit := int(binary.LittleEndian.Uint32(fileBytes[21:25]))
 				width = bit&0x3fff + 1
 				height = bit>>14&0x3fff + 1
 			case 88:

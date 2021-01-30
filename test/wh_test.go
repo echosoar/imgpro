@@ -17,11 +17,11 @@ func TestWHPng(t *testing.T) {
 }
 
 func TestWHJpg(t *testing.T) {
-	result := Run("./imgs/lincoln.jpg", []string{"width", "height"})
-	if result["width"].Int != 645 {
+	result := Run("./imgs/go.jpg", []string{"width", "height"})
+	if result["width"].Int != 1576 {
 		t.Fatal("jpg width error")
 	}
-	if result["height"].Int != 796 {
+	if result["height"].Int != 890 {
 		t.Fatal("jpg height error")
 	}
 }
@@ -37,17 +37,26 @@ func TestWHGif(t *testing.T) {
 }
 
 func TestWHBmp(t *testing.T) {
-	result := Run("./imgs/iojs.bmp", []string{"width", "height"})
-	if result["width"].Int != 367 {
+	result := Run("./imgs/go.bmp", []string{"width", "height"})
+	if result["width"].Int != 1576 {
 		t.Fatal("bmp width error")
 	}
-	if result["height"].Int != 187 {
+	if result["height"].Int != 890 {
 		t.Fatal("bmp height error")
 	}
 }
 
-func TestWHWebp(t *testing.T) {
-	result := Run("./imgs/cool.webp", []string{"width", "height"})
+func TestWHWebp32(t *testing.T) {
+	result := Run("./imgs/go_32.webp", []string{"width", "height"})
+	if result["width"].Int != 1576 {
+		t.Fatal("webp width error")
+	}
+	if result["height"].Int != 890 {
+		t.Fatal("webp height error")
+	}
+}
+func TestWHWebp88(t *testing.T) {
+	result := Run("./imgs/cool_88.webp", []string{"width", "height"})
 	if result["width"].Int != 300 {
 		t.Fatal("webp width error")
 	}

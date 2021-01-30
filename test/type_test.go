@@ -13,14 +13,14 @@ func TestTypePng(t *testing.T) {
 	}
 }
 func TestTypeJpg(t *testing.T) {
-	result := Run("./imgs/lincoln.jpg", []string{"type"})
+	result := Run("./imgs/go.jpg", []string{"type"})
 	if result["type"].String != "jpg" {
 		t.Fatal("type error")
 	}
 }
 
 func TestTypeBmp(t *testing.T) {
-	result := Run("./imgs/iojs.bmp", []string{"type"})
+	result := Run("./imgs/go.bmp", []string{"type"})
 	if result["type"].String != "bmp" {
 		t.Fatal("type error")
 	}
@@ -33,8 +33,15 @@ func TestTypeGif(t *testing.T) {
 	}
 }
 
-func TestTypeWebp(t *testing.T) {
-	result := Run("./imgs/cool.webp", []string{"type"})
+func TestTypeWebp32(t *testing.T) {
+	result := Run("./imgs/cool_88.webp", []string{"type"})
+	if result["type"].String != "webp" {
+		t.Fatal("type error")
+	}
+}
+
+func TestTypeWebp88(t *testing.T) {
+	result := Run("./imgs/go_32.webp", []string{"type"})
 	if result["type"].String != "webp" {
 		t.Fatal("type error")
 	}
