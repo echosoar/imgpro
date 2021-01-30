@@ -35,3 +35,23 @@ func TestWHGif(t *testing.T) {
 		t.Fatal("gif height error")
 	}
 }
+
+func TestWHBmp(t *testing.T) {
+	result := Run("./imgs/iojs.bmp", []string{"width", "height"})
+	if result["width"].Int != 367 {
+		t.Fatal("bmp width error")
+	}
+	if result["height"].Int != 187 {
+		t.Fatal("bmp height error")
+	}
+}
+
+func TestWHWebp(t *testing.T) {
+	result := Run("./imgs/cool.webp", []string{"width", "height"})
+	if result["width"].Int != 300 {
+		t.Fatal("webp width error")
+	}
+	if result["height"].Int != 300 {
+		t.Fatal("webp height error")
+	}
+}
