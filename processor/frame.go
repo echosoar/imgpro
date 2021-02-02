@@ -1,6 +1,10 @@
 package processor
 
 import (
+	"bufio"
+	"image/gif"
+	"os"
+
 	img "github.com/echosoar/imgpro/core"
 )
 
@@ -18,8 +22,18 @@ func frameRunner(core *img.Core) map[string]img.Value {
 	imgType := core.Result["type"].String
 	if imgType == "jpg" || imgType == "png" || imgType == "bmp" {
 		frame = 1
-	} else if imgType == "bmp" {
-
+	} else if imgType == "gif" {
+		fp, err := os.Open(core.FilePath)
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+		reader := bufio.NewReader(fp)
+		gif, err := gif.DecodeAll(reader)
+		if err != nil {
+			panic(err)
+		}
+		frame = len(gif.Image)
 	} else if imgType == "webp" {
 
 	}

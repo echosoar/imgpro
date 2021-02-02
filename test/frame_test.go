@@ -25,3 +25,10 @@ func TestFrameBmp(t *testing.T) {
 		t.Fatal("frame error")
 	}
 }
+
+func TestFrameGif(t *testing.T) {
+	result := Run("./imgs/cool.gif", []string{"frame"})
+	if result["frame"].Int != 13 {
+		t.Fatal("frame error")
+	}
+}
