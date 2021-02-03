@@ -14,8 +14,6 @@ func Run(filePath string, features []string) img.Result {
 	pro.TypeProcessor(core)
 	// width/height
 	pro.WHProcessor(core)
-	// frame count
-	pro.FrameProcessor(core)
 	core.Run(filePath)
 	return core.GetResult()
 }
