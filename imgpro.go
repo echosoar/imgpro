@@ -14,6 +14,8 @@ func Run(filePath string, features []string) img.Result {
 	pro.TypeProcessor(core)
 	// width/height
 	pro.WHProcessor(core)
+	// rgba/frame
+	pro.RGBAProcessor(core)
 	core.Run(filePath)
 	return core.GetResult()
 }
