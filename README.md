@@ -1,4 +1,6 @@
 # ImgPro
+[![Build Status](https://circleci.com/gh/echosoar/imgpro.svg?style=shield)](https://circleci.com/gh/echosoar/imgpro)
+
 多功能图像信息识别与图像处理库，支持多种图片格式
 
 ### 如何使用
