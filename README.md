@@ -27,21 +27,21 @@ func main() {
 
 ### 功能列表
 
-| 功能 | 属性/方法名 | PNG | JPG | GIF | BMP | WebP | 
+| 功能 | 属性/方法名 | PNG | JPG | GIF | BMP | WebP |
 | --- | --- | :---: | :---: | :---: | :---: | :---: |
 | 图像大小 | size | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 类型检测 | type | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 宽度/高度| wh | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 颜色数据 | rgba |
-| 色板 | hue | 
+| 帧数| frame | ✅ | ✅ |
+| 颜色数据 | rgba | ✅ | ✅ |
+| 色调（颜色占比） | hue | 
+| 色板（颜色归类） | palette | 
 | EXIF 信息 | exif |
 | 二维码识别 | qrcode |
 | 文字识别 | ocr |
+| 人脸信息 | face |
 | 人体信息 | person |
 | 物体信息 | object |
-| 人脸信息 | face |
-| 类型转换 | Conversion (方法) |
-| 压缩 | Compress (方法) |
 
 ---
 

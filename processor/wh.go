@@ -18,7 +18,7 @@ import (
 // WHProcessor get image width and height
 func WHProcessor(imgCore *img.Core) {
 	imgCore.Bind(&img.Processor{
-		Keys:         []string{"width", "height"},
+		Keys:         []string{"width", "height", "wh"},
 		Precondition: []string{"type"},
 		Runner:       whRunner,
 	})

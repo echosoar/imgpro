@@ -16,6 +16,8 @@ func Run(filePath string, features []string) img.Result {
 	pro.WHProcessor(core)
 	// rgba/frame
 	pro.RGBAProcessor(core)
+	// hue
+	pro.HUEProcessor(core)
 	core.Run(filePath)
 	return core.GetResult()
 }

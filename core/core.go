@@ -19,6 +19,15 @@ type Value struct {
 	Int    int
 	String string
 	Bytes  []byte
+	Rgba   [][]RGBA
+}
+
+// RGBA 值
+type RGBA struct {
+	R int
+	G int
+	B int
+	A int
 }
 
 // ValueType 值类型
@@ -31,6 +40,8 @@ const (
 	ValueTypeString ValueType = 1
 	// ValueTypeBytes bytes
 	ValueTypeBytes ValueType = 2
+	// ValueTypeRGBA rgba
+	ValueTypeRGBA ValueType = 3
 )
 
 // Processor 处理器
