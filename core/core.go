@@ -20,6 +20,7 @@ type Value struct {
 	String string
 	Bytes  []byte
 	Rgba   [][]RGBA
+	Values map[string]Value
 }
 
 // RGBA 值
@@ -42,6 +43,8 @@ const (
 	ValueTypeBytes ValueType = 2
 	// ValueTypeRGBA rgba
 	ValueTypeRGBA ValueType = 3
+	// ValueTypeMap map[key] ValueType
+	ValueTypeMap ValueType = 4
 )
 
 // Processor 处理器
