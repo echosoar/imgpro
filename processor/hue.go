@@ -10,9 +10,9 @@ import (
 // HUEProcessor processor
 func HUEProcessor(imgCore *img.Core) {
 	imgCore.Bind(&img.Processor{
-		Keys:         []string{"hue"},
-		Precondition: []string{"rgba", "frame"},
-		Runner:       hueRunner,
+		Keys:          []string{"hue"},
+		PreConditions: []string{"rgba", "frame"},
+		Runner:        hueRunner,
 	})
 }
 

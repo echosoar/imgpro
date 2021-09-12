@@ -11,9 +11,9 @@ import (
 // TypeProcessor get image type
 func TypeProcessor(imgCore *img.Core) {
 	imgCore.Bind(&img.Processor{
-		Keys:         []string{"type"},
-		Precondition: []string{"size"},
-		Runner:       typeRunner,
+		Keys:          []string{"type"},
+		PreConditions: []string{"size"},
+		Runner:        typeRunner,
 	})
 }
 

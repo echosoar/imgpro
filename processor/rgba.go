@@ -6,19 +6,16 @@ import (
 	"os"
 
 	img "github.com/echosoar/imgpro/core"
+	utils "github.com/echosoar/imgpro/utils"
 )
 
 // RGBAProcessor bin size processor
 func RGBAProcessor(imgCore *img.Core) {
 	imgCore.Bind(&img.Processor{
-		Keys:         []string{"rgba", "frame"},
-		Precondition: []string{"type", "wh"},
-		Runner:       rgbaRunner,
+		Keys:          []string{"rgba", "frame"},
+		PreConditions: []string{"type", "wh"},
+		Runner:        rgbaRunner,
 	})
-}
-
-func uint32ToInt(num uint32) int {
-	return int(num >> 8)
 }
 
 func rgbaRunner(core *img.Core) map[string]img.Value {
@@ -41,10 +38,10 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 			for col := 0; col < width; col++ {
 				r, g, b, a := originalImage.At(col, line).RGBA()
 				rgbaFrame = append(rgbaFrame, img.RGBA{
-					R: uint32ToInt(r),
-					G: uint32ToInt(g),
-					B: uint32ToInt(b),
-					A: uint32ToInt(a),
+					R: utils.Uint32ToInt(r),
+					G: utils.Uint32ToInt(g),
+					B: utils.Uint32ToInt(b),
+					A: utils.Uint32ToInt(a),
 				})
 			}
 		}

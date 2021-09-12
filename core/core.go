@@ -1,4 +1,8 @@
-package imgtype
+package core
+
+import (
+	utils "github.com/echosoar/imgpro/utils"
+)
 
 // Core 内核
 type Core struct {
@@ -20,6 +24,7 @@ type Value struct {
 	String string
 	Bytes  []byte
 	Rgba   [][]RGBA
+	Values map[string]Value
 }
 
 // RGBA 值
@@ -42,13 +47,15 @@ const (
 	ValueTypeBytes ValueType = 2
 	// ValueTypeRGBA rgba
 	ValueTypeRGBA ValueType = 3
+	// ValueTypeMap map[key] ValueType
+	ValueTypeMap ValueType = 4
 )
 
 // Processor 处理器
 type Processor struct {
-	Keys         []string
-	Precondition []string
-	Runner       func(*Core) map[string]Value
+	Keys          []string
+	PreConditions []string
+	Runner        func(*Core) map[string]Value
 }
 
 // Bind 绑定处理器
@@ -56,7 +63,7 @@ func (core *Core) Bind(processor *Processor) {
 	for _, feature := range processor.Keys {
 		core.processorMap[feature] = processor
 	}
-	for _, condition := range processor.Precondition {
+	for _, condition := range processor.PreConditions {
 		core.features = append(core.features, condition)
 	}
 }
@@ -65,7 +72,7 @@ func (core *Core) Bind(processor *Processor) {
 func (core *Core) Run(filePath string) {
 	core.FilePath = filePath
 	core.Result = make(map[string]Value)
-	core.features = removeDuplicateStringValues(core.features)
+	core.features = utils.RemoveDuplicateStringValues(core.features)
 	for _, feature := range core.features {
 		core.runProcessor(feature)
 	}
@@ -90,7 +97,7 @@ func (core *Core) runProcessor(feature string) {
 		panic("Feature \"" + feature + "\" not found processor")
 	}
 
-	for _, preFeature := range processor.Precondition {
+	for _, preFeature := range processor.PreConditions {
 		core.runProcessor(preFeature)
 	}
 

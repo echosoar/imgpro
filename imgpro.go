@@ -18,6 +18,13 @@ func Run(filePath string, features []string) img.Result {
 	pro.RGBAProcessor(core)
 	// hue
 	pro.HUEProcessor(core)
+	// exif
+	pro.ExifProcessor(core)
+	// time
+	pro.TimeProcessor(core)
+	// device
+	pro.DeviceProcessor(core)
+
 	core.Run(filePath)
 	return core.GetResult()
 }
