@@ -34,17 +34,17 @@ func main() {
 | 图像大小 | size | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 类型检测 | type | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 宽度/高度| wh | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 帧数| frame | ✅ | ✅ |
-| 颜色数据 | rgba | ✅ | ✅ |
-| 色调（颜色占比） | hue | ✅ | ✅ |
+| 帧数| frame | ✅ | ✅ | 
+| 颜色数据 | rgba | ✅ | ✅ | 
+| 色调（颜色占比） | hue |  ✅ | ✅ | 
 | 色板（颜色归类） | palette | 
-| Exif | exif |  | ✅ |
-| 时间 | time | |✅ | | | |
-| 地点 | position | | ✅| | | |
-| 设备 | device | | | | | |
-| 二维码 | qrcode |
-| 文字 | ocr |
-| 人脸 | face |
+| 地点 | position | 
+| 时间 | time | 
+| 设备 | device | 
+| 条形码识别 | barcode |
+| 二维码识别 | qrcode |
+| 文字识别 | ocr |
+| 人脸信息 | face |
 | 人体信息 | person |
 | 动物信息 | animal |
 | 物体信息 | object |
