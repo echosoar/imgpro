@@ -1,6 +1,7 @@
-package imgtype
+package utils
 
-func removeDuplicateStringValues(source []string) []string {
+// RemoveDuplicateStringValues ["aaa", "vvv", "aaa"] => ["aaa", "vvv"]
+func RemoveDuplicateStringValues(source []string) []string {
 	elements := make(map[string]bool)
 	list := []string{}
 	for _, str := range source {
