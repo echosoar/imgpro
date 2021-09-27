@@ -1,9 +1,6 @@
 package processor
 
 import (
-	"bufio"
-	"os"
-
 	img "github.com/echosoar/imgpro/core"
 	utils "github.com/echosoar/imgpro/utils"
 )
@@ -541,18 +538,7 @@ func trimZero(bts []byte) []byte {
 }
 
 func exifRunner(core *img.Core) map[string]img.Value {
-	f, err := os.Open(core.FilePath)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	size := core.Result["size"].Int
-	fileBytes := make([]byte, size)
-	reader := bufio.NewReader(f)
-	_, readErr := reader.Read(fileBytes)
-	if readErr != nil {
-		panic(readErr)
-	}
+	fileBytes := core.FileBinary
 
 	value := make(map[string]img.Value)
 	app1BytesIndex := utils.FindByteIndex([]byte("\xFF\xE1"), fileBytes)

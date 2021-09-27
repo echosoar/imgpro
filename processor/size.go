@@ -1,8 +1,6 @@
 package processor
 
 import (
-	"os"
-
 	img "github.com/echosoar/imgpro/core"
 )
 
@@ -15,15 +13,7 @@ func SizeProcessor(imgCore *img.Core) {
 }
 
 func sizeRunner(core *img.Core) map[string]img.Value {
-	file, err := os.Stat(core.FilePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			panic("File \"" + core.FilePath + "\" not exists")
-		}
-		panic(err)
-	}
-	// get the size
-	size := file.Size()
+	size := len(core.FileBinary)
 	return map[string]img.Value{
 		"size": {
 			Type: img.ValueTypeInt,

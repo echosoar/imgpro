@@ -1,9 +1,8 @@
 package processor
 
 import (
-	"bufio"
+	"bytes"
 	"image"
-	"os"
 
 	img "github.com/echosoar/imgpro/core"
 	utils "github.com/echosoar/imgpro/utils"
@@ -24,14 +23,11 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 	height := core.Result["height"].Int
 	frame := 1
 	rgba := [][]img.RGBA{}
-	f, err := os.Open(core.FilePath)
+
+	originalImage, _, err := image.Decode(bytes.NewReader(core.FileBinary))
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
-	reader := bufio.NewReader(f)
-
-	originalImage, _, err := image.Decode(reader)
 	if imgType == "png" || imgType == "jpg" {
 		rgbaFrame := []img.RGBA{}
 		for line := 0; line < height; line++ {

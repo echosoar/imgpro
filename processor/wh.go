@@ -1,7 +1,7 @@
 package processor
 
 import (
-	"bufio"
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"image"
@@ -10,7 +10,6 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"os"
 
 	img "github.com/echosoar/imgpro/core"
 )
@@ -19,47 +18,38 @@ import (
 func WHProcessor(imgCore *img.Core) {
 	imgCore.Bind(&img.Processor{
 		Keys:          []string{"width", "height", "wh"},
-		PreConditions: []string{"type"},
+		PreConditions: []string{"type", "size"},
 		Runner:        whRunner,
 	})
 }
 
 func whRunner(core *img.Core) map[string]img.Value {
 	imgType := core.Result["type"].String
+	size := core.Result["size"].Int
 	width := 0
 	height := 0
+	fileBytes := core.FileBinary
 
-	f, err := os.Open(core.FilePath)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
 	if imgType == "png" || imgType == "jpg" || imgType == "gif" {
-		image, _, err := image.DecodeConfig(f)
+		image, _, err := image.DecodeConfig(bytes.NewReader(core.FileBinary))
 		if err != nil {
 			panic(err)
 		}
 		width = image.Width
 		height = image.Height
 	} else if imgType == "bmp" {
-		fileBytes := make([]byte, 26)
-		reader := bufio.NewReader(f)
-		count, readErr := reader.Read(fileBytes)
-		if readErr == nil && count >= 18 {
+		if size >= 18 {
 			headersize := binary.LittleEndian.Uint32(fileBytes[14:18])
-			if headersize >= 40 && count >= 26 {
+			if headersize >= 40 && size >= 26 {
 				width = int(binary.LittleEndian.Uint32(fileBytes[18:22]))
 				height = int(binary.LittleEndian.Uint32(fileBytes[22:26]))
-			} else if headersize == 12 && count >= 22 {
+			} else if headersize == 12 && size >= 22 {
 				width = int(binary.LittleEndian.Uint16(fileBytes[18:20]))
 				height = int(binary.LittleEndian.Uint16(fileBytes[20:22]))
 			}
 		}
 	} else if imgType == "webp" {
-		fileBytes := make([]byte, 30)
-		reader := bufio.NewReader(f)
-		count, readErr := reader.Read(fileBytes)
-		if readErr == nil && count >= 15 {
+		if size >= 15 {
 			fmt.Println(fileBytes[15])
 			switch fileBytes[15] {
 			case 32:

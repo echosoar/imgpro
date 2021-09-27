@@ -1,17 +1,23 @@
 package core
 
 import (
+	"bufio"
+	"bytes"
+	"os"
+
 	utils "github.com/echosoar/imgpro/utils"
 )
 
 // Core 内核
 type Core struct {
-	FilePath string
-	Result   map[string]Value
+	FileBinary []byte
+	// FilePath   string
+	Result map[string]Value
 
 	processorMap  map[string]*Processor
 	features      []string
 	originFeature []string
+	ioReader      *bytes.Reader
 }
 
 // Result 结果
@@ -63,14 +69,39 @@ func (core *Core) Bind(processor *Processor) {
 	for _, feature := range processor.Keys {
 		core.processorMap[feature] = processor
 	}
-	for _, condition := range processor.PreConditions {
-		core.features = append(core.features, condition)
-	}
 }
 
 // Run 运行
 func (core *Core) Run(filePath string) {
-	core.FilePath = filePath
+	// core.FilePath = filePath
+
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			panic("File \"" + filePath + "\" not exists")
+		}
+		panic("stat error")
+	}
+	// get the size
+	size := fileInfo.Size()
+
+	fileHandler, err := os.Open(filePath)
+	if err != nil {
+		panic("open error")
+	}
+	defer fileHandler.Close()
+	fileBytes := make([]byte, size)
+	reader := bufio.NewReader(fileHandler)
+	_, readErr := reader.Read(fileBytes)
+	if readErr != nil {
+		panic("file read error")
+	}
+	core.RunBinary(fileBytes)
+}
+
+// RunBinary 二进制运行
+func (core *Core) RunBinary(binary []byte) {
+	core.FileBinary = binary
 	core.Result = make(map[string]Value)
 	core.features = utils.RemoveDuplicateStringValues(core.features)
 	for _, feature := range core.features {

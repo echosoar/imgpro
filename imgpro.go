@@ -5,8 +5,7 @@ import (
 	pro "github.com/echosoar/imgpro/processor"
 )
 
-// Run run
-func Run(filePath string, features []string) img.Result {
+func initial(features []string) *img.Core {
 	core := img.New(features)
 	// size
 	pro.SizeProcessor(core)
@@ -24,7 +23,19 @@ func Run(filePath string, features []string) img.Result {
 	pro.TimeProcessor(core)
 	// device
 	pro.DeviceProcessor(core)
+	return core
+}
 
+// Run run
+func Run(filePath string, features []string) img.Result {
+	core := initial(features)
 	core.Run(filePath)
+	return core.GetResult()
+}
+
+// RunBinary run
+func RunBinary(imgFileBinary []byte, features []string) img.Result {
+	core := initial(features)
+	core.RunBinary(imgFileBinary)
 	return core.GetResult()
 }

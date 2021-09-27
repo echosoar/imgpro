@@ -1,9 +1,7 @@
 package processor
 
 import (
-	"bufio"
 	"bytes"
-	"os"
 
 	img "github.com/echosoar/imgpro/core"
 )
@@ -18,24 +16,7 @@ func TypeProcessor(imgCore *img.Core) {
 }
 
 func typeRunner(core *img.Core) map[string]img.Value {
-	f, err := os.Open(core.FilePath)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	size := core.Result["size"].Int
-	readSize := 14 // for webp
-	if size < readSize {
-		readSize = size
-	}
-
-	fileBytes := make([]byte, readSize)
-	reader := bufio.NewReader(f)
-	count, readErr := reader.Read(fileBytes)
-	if readErr != nil {
-		panic(readErr)
-	}
-	fileBytes = fileBytes[:count]
+	fileBytes := core.FileBinary
 	// refs: https://golang.org/src/net/http/sniff.go
 	imgType := "unknow"
 	if bytes.HasPrefix(fileBytes, []byte("BM")) {
