@@ -4,6 +4,8 @@
 
 Multifunctional image information recognition library, supporting a variety of image formats. 
 
+
+Online Webassembly Experience: https://echosoar.github.io/imgpro/wasm/
 ### Usage
 #### Initial
 ```shell

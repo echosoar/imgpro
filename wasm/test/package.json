@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "koa": "^2.13.3",
-    "koa-static": "^5.0.0"
-  }
-}
