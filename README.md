@@ -1,6 +1,6 @@
 # Imgpro
 
-![CircleCI](https://circleci.com/gh/echosoar/imgpro/tree/main.svg?style=svg)
+![CircleCI](https://circleci.com/gh/echosoar/imgpro/tree/main.svg?style=svg&circle-token=355449f4d49bf63a561c68c57221688dadc48691)
 
 Multifunctional image information recognition library, supporting a variety of image formats. 
 
