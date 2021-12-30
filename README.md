@@ -30,8 +30,8 @@ func main() {
 
 ### Features
 
-| Features | Attribute | PNG | JPG | GIF | BMP | WebP | APNG | AVIF |
-| --- | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Features | Attribute | PNG | JPG | GIF | BMP | WebP |
+| --- | --- | :---: | :---: | :---: | :---: | :---: | 
 | File Size | size | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Format Detect | type | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Width/Height| wh | ✅ | ✅ | ✅ | ✅ | ✅ |
