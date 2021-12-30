@@ -1,14 +1,15 @@
-# ImgPro
-[![Build Status](https://circleci.com/gh/echosoar/imgpro.svg?style=shield)](https://circleci.com/gh/echosoar/imgpro)
+# Imgpro
 
-多功能图像信息识别与图像处理库，支持多种图片格式
+![CircleCI](https://circleci.com/gh/echosoar/imgpro/tree/main.svg?style=svg)
 
-### 如何使用
-#### 安装
+Multifunctional image information recognition library, supporting a variety of image formats. 
+
+### Usage
+#### Initial
 ```shell
 $ go get github.com/echosoar/imgpro
 ```
-#### 代码中使用
+#### Use in code
 ```go
 import (
   "github.com/echosoar/imgpro"
@@ -27,27 +28,20 @@ func main() {
 }
 ```
 
-### 功能列表
+### Features
 
-| 功能 | 属性/方法名 | PNG | JPG | GIF | BMP | WebP | APNG | AVIF |
+| Features | Attribute | PNG | JPG | GIF | BMP | WebP | APNG | AVIF |
 | --- | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 图像大小 | size | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 类型检测 | type | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 宽度/高度| wh | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 帧数| frame | ✅ | ✅ |
-| 颜色数据 | rgba | ✅ | ✅ |
-| 色调（颜色占比） | hue | ✅ | ✅ |
-| 色板（颜色归类） | palette | 
+| File Size | size | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Format Detect | type | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Width/Height| wh | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Frames | frame | ✅ | ✅ |
+| Color data | rgba | ✅ | ✅ |
+| Color proportion） | hue | ✅ | ✅ |
 | Exif | exif |  | ✅ |
-| 时间 | time | |✅ | | | |
-| 地点 | position | | ✅| | | |
-| 设备 | device | | | | | |
-| 二维码 | qrcode |
-| 文字 | ocr |
-| 人脸 | face |
-| 人体信息 | person |
-| 动物信息 | animal |
-| 物体信息 | object |
+| Create Time | time | |✅ | | | |
+| Position(GPS) Info | position | | | | | |
+| Device Info | device | | ✅| | | |
 
 ---
 
