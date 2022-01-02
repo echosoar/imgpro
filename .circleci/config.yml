@@ -21,6 +21,7 @@ jobs:
       - store_test_results:
           path: /tmp/test-reports
   build-wasm:
+    working_directory: ~/repo/wasm
     docker:
       - image: circleci/golang:1.15.8
     steps:
@@ -31,6 +32,9 @@ jobs:
       - run:
           name: Build WASM
           command: GOOS=js GOARCH=wasm go build -o imgpro.wasm
+      - run:
+          name: WASM Exec Script
+          command: cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" .
       - persist_to_workspace:
           root: wasm
           paths:
