@@ -33,7 +33,10 @@ jobs:
           command: GOOS=js GOARCH=wasm go build -o imgpro.wasm
       - persist_to_workspace:
           root: wasm
-          paths: pages
+          paths:
+            - imgpro.wasm
+            - index.html
+            - wasm_exec.js
   docs-deploy:
     # refs: https://circleci.com/blog/deploying-documentation-to-github-pages-with-continuous-integration/
     docker:
@@ -53,7 +56,7 @@ jobs:
             - "0c:5c:59:d8:9b:48:36:12:cb:18:b5:fe:10:b6:46:34"
       - run:
           name: Deploy docs to gh-pages branch
-          command: gh-pages --dotfiles --message "[skip ci] Updates" --dist wasm/pages
+          command: gh-pages --dotfiles --message "[skip ci] Updates" --dist wasm
 
 
 workflows:
