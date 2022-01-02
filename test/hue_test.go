@@ -20,3 +20,10 @@ func TestHUEPng(t *testing.T) {
 		t.Fatal("hue error")
 	}
 }
+
+func TestHUEJpg(t *testing.T) {
+	result := Run("./imgs/go.jpg", []string{"hue"})
+	if len(result["hue"].Rgba[0]) != 3 {
+		t.Fatal("hue jpeg err", len(result["hue"].Rgba[0]))
+	}
+}

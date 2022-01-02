@@ -16,7 +16,7 @@ func HUEProcessor(imgCore *img.Core) {
 	})
 }
 
-const hueProcessSize = 20
+const hueProcessSize = 200
 
 func hueExec(rgbaList []img.RGBA) []img.RGBA {
 	// var hueResult []img.RGBA
@@ -45,6 +45,7 @@ func hueExec(rgbaList []img.RGBA) []img.RGBA {
 
 func hueRunner(core *img.Core) map[string]img.Value {
 	rgba := core.Result["rgba"].Rgba
+
 	frame := core.Result["frame"].Int
 	var hueResult [][]img.RGBA
 	for frameIndex := 0; frameIndex < frame; frameIndex++ {
@@ -75,9 +76,23 @@ type canopy struct {
 	T2        float64
 }
 
+func (c *canopy) getT1T2() {
+	center := c.average(c.AllPoints)
+	var allDistance float64 = 0
+	for i := 0; i < len(c.AllPoints); i++ {
+		current := c.AllPoints[i]
+		distance := math.Pow((float64(center.R-current.R)), 2) + math.Pow((float64(center.G-current.G)), 2) + math.Pow((float64(center.B-current.B)), 2) + math.Pow((float64(center.A-current.A)), 2)
+
+		allDistance += math.Sqrt(distance)
+	}
+	c.T1 = allDistance / float64(len(c.AllPoints))
+	c.T2 = c.T1 * 2 / 3
+}
+
 func (c *canopy) run() {
-	var newAllPoint []img.RGBA
+	c.getT1T2()
 	for len(c.AllPoints) != 0 {
+		var newAllPoint []img.RGBA
 		c.getRandom(c.AllPoints)
 		for i := 0; i < len(c.AllPoints); i++ {
 			current := c.AllPoints[i]
@@ -118,6 +133,7 @@ func (c *canopy) run() {
 func (c *canopy) getRandom(allPoints []img.RGBA) {
 	index := rand.Intn(len(allPoints))
 	current := allPoints[index]
+
 	c.AllPoints = append(allPoints[:index], allPoints[index+1:]...)
 	c.Canopies = append(c.Canopies, canopyPoint{
 		Center: current,
@@ -173,8 +189,6 @@ func (c *canopy) result(size int) []img.RGBA {
 	if size > 0 {
 		canopyInstance := canopy{
 			AllPoints: centerPoints,
-			T1:        30,
-			T2:        20,
 		}
 		canopyInstance.run()
 		return canopyInstance.result(size - 1)
