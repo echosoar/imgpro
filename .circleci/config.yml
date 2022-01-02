@@ -21,7 +21,7 @@ jobs:
       - store_test_results:
           path: /tmp/test-reports
   build-wasm:
-    working_directory: ~/repo/wasm
+    working_directory: ~/repo
     docker:
       - image: circleci/golang:1.15.8
     steps:
