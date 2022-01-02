@@ -49,8 +49,8 @@ jobs:
           name: Install and configure dependencies
           command: |
             npm install -g --silent gh-pages@2.0.1
-            git config user.email "ci-pages-build@iam.gy"
-            git config user.name "ci-build"
+            git config user.email "82163514@qq.com"
+            git config user.name "echosoar"
       - add_ssh_keys:
           fingerprints:
             - "86:f9:3b:0f:f0:b2:1b:b8:49:dc:e0:42:e4:75:e3:4b"
