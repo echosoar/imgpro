@@ -3,7 +3,6 @@ package processor
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"image"
 
 	// Register to image
@@ -50,7 +49,7 @@ func whRunner(core *img.Core) map[string]img.Value {
 		}
 	} else if imgType == "webp" {
 		if size >= 15 {
-			fmt.Println(fileBytes[15])
+
 			switch fileBytes[15] {
 			case 32:
 				width = int(binary.LittleEndian.Uint16(fileBytes[26:28])) & 0x3fff

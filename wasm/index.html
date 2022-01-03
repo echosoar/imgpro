@@ -1,10 +1,26 @@
-<h1>Imgpro WebAssembly Test</h1>
-<input type="file" id="file" />
-<input type="button" id="execBtn" value="execute" />
+<h1>Imgpro Online Test</h1>
+<hr />
 <div>
-  <h1 />
+  <input type="file" id="file" />
+  <input type="button" id="execBtn" value="execute" />
+</div>
+<div style="margin: 12px 0;">
+  <span>features:</span>
+  <input type="checkbox" class="feature" value="size" checked> size 
+  <input type="checkbox" class="feature" value="type" checked> type 
+  <input type="checkbox" class="feature" value="width" checked> width 
+  <input type="checkbox" class="feature" value="height" checked> height 
+  <input type="checkbox" class="feature" value="frame" checked> frame 
+  <input type="checkbox" class="feature" value="exif" checked> exif 
+</div>
+<hr />
+<div>
   <h3>Result:</h3>
   <pre id="result">{}</pre>
+</div>
+<hr />
+<div>
+  ❤ Welcome to star: <a target="_blank" href="https://github.com/echosoar/imgpro">Github</a>
 </div>
 <script src="./wasm_exec.js"></script>
 <script>
@@ -23,10 +39,10 @@ load()
 
 <script>
 function formatResult(result) {
+  console.log('result', result);
   const data = {};
   Object.keys(result).forEach(key => {
     const valueInfo = result[key];
-    console.log('valueInfo', valueInfo);
     switch (valueInfo.Type) {
       case 0:
         data[key] = valueInfo.Int;
@@ -58,25 +74,17 @@ document.querySelector('#file').addEventListener('change', function() {
 }, false);
 
 document.querySelector('#execBtn').addEventListener('click', function() {
-  if (!cacheFileBuffer) {
+  const features = Array.from(document.querySelectorAll('.feature')).filter(featureEle => featureEle.checked).map(featureEle => featureEle.value);
+  if (!cacheFileBuffer || !features.length) {
     return;
   }
   let result;
   try {
-    result = imgExec([
-      "size",
-      "type",
-      "width",
-      "height",
-      "frame",
-      "hue",
-      "exif"
-    ], cacheFileBuffer);
+    result = imgExec(features, cacheFileBuffer);
     document.getElementById("result").innerText = JSON.stringify(formatResult(JSON.parse(result)), null, 2);
   } catch(e) {
     document.getElementById("result").innerText = 'error: ' + e.message
     load()
   }
-  
 }, false);
 </script>

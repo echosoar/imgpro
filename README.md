@@ -5,7 +5,7 @@
 Multifunctional image information recognition library, supporting a variety of image formats. 
 
 
-Online Webassembly Experience: [imgpro](https://echosoar.github.io/imgpro/index.html)
+Online Webassembly Experience: [imgpro](https://echosoar.github.io/imgpro/)
 ### Usage
 #### Initial
 ```shell

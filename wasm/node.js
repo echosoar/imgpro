@@ -14,7 +14,7 @@ const run = async (file) => {
   });
 }
 run(wasmFile).then(() => {
-  const cacheFileBuffer = readFileSync(resolve(__dirname, '../test/imgs/test.jpeg'))
+  const cacheFileBuffer = readFileSync(resolve(__dirname, '../test/imgs/cool_88.webp'))
   let result;
   try {
     result = global.imgExec([

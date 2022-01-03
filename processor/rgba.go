@@ -21,14 +21,15 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 	imgType := core.Result["type"].String
 	width := core.Result["width"].Int
 	height := core.Result["height"].Int
-	frame := 1
+	frame := 0
 	rgba := [][]img.RGBA{}
 
-	originalImage, _, err := image.Decode(bytes.NewReader(core.FileBinary))
-	if err != nil {
-		panic(err)
-	}
 	if imgType == "png" || imgType == "jpg" {
+		frame = 1
+		originalImage, _, err := image.Decode(bytes.NewReader(core.FileBinary))
+		if err != nil {
+			panic(err)
+		}
 		rgbaFrame := []img.RGBA{}
 		for line := 0; line < height; line++ {
 			for col := 0; col < width; col++ {
