@@ -24,6 +24,8 @@ run(wasmFile).then(() => {
       "height",
       "frame",
       "hue",
+      "time",
+      "device",
       "exif"
     ], cacheFileBuffer);
     console.log(JSON.stringify(result, null, 2));
