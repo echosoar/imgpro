@@ -57,7 +57,7 @@ jobs:
             git config user.name "echosoar"
       - add_ssh_keys:
           fingerprints:
-            - "86:f9:3b:0f:f0:b2:1b:b8:49:dc:e0:42:e4:75:e3:4b"
+            - "99:5d:22:cc:75:23:3b:0a:1e:f3:a1:b6:ed:8e:a9:25"
       - run:
           name: Deploy docs to gh-pages branch
           command: gh-pages --dotfiles --message "[skip ci] Updates" --dist wasm
