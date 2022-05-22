@@ -23,6 +23,8 @@ func initial(features []string) *img.Core {
 	pro.TimeProcessor(core)
 	// device
 	pro.DeviceProcessor(core)
+	// position
+	pro.PositionProcessor(core)
 	return core
 }
 

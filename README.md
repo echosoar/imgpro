@@ -42,7 +42,7 @@ func main() {
 | Color proportion） | hue | ✅ | ✅ |
 | Exif | exif |  | ✅ |
 | Create Time | time | |✅ | | | |
-| Position(GPS) Info | position | | | | | |
+| Position(GPS) Info | position | |✅  | | | |
 | Device Info | device | | ✅| | | |
 
 ---
