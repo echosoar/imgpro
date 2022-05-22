@@ -15,6 +15,7 @@
   <input type="checkbox" class="feature" value="hue" checked> hue 
   <input type="checkbox" class="feature" value="exif" checked> exif  
   <input type="checkbox" class="feature" value="device" checked> device 
+  <input type="checkbox" class="feature" value="position" checked> gps position 
 </div>
 <hr />
 <div>
@@ -57,7 +58,7 @@ function formatResult(result) {
         data[key] = valueInfo.Rgba;
         break;
       case 4:
-        data[key] = valueInfo.Values;
+        data[key] = formatResult(valueInfo.Values);
         break;
     }
   });
