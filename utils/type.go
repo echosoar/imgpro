@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"strings"
 	"strconv"
 )
 
@@ -16,6 +17,22 @@ func BytesToInt(bytes []byte, isLow bool) int {
 		}
 	}
 	return res
+}
+
+func ByteToRational64uString(bytes []byte, isLow bool) string {
+	parts := make([]string, 0);
+	for i:=0;i <len(bytes);i+=8 {
+		first := BytesToInt(bytes[i:i+4], isLow);
+		second := BytesToInt(bytes[i+4:i+8], isLow);
+		if first == 0 {
+			parts = append(parts, "0");
+		} else if second == 1 {
+			parts = append(parts, IntToString(first));
+		} else {
+			parts = append(parts, IntToString(first) + "/" + IntToString(second));
+		}
+	}
+	return strings.Join(parts, " ");
 }
 
 // Uint32ToInt uint32 to int

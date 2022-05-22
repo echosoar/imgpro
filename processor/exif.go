@@ -493,6 +493,41 @@ var tagNames = map[int]string{
 	0xfe58: "MoireFilter",
 }
 
+var GPSTagNames = map[int]string {
+	0x0000: "GPSVersionID",
+	0x0001: "GPSLatitudeRef",
+	0x0002: "GPSLatitude",
+	0x0003: "GPSLongitudeRef",
+	0x0004: "GPSLongitude",
+	0x0005: "GPSAltitudeRef",
+	0x0006: "GPSAltitude",
+	0x0007: "GPSTimeStamp",
+	0x0008: "GPSSatellites",
+	0x0009: "GPSStatus",
+	0x000a: "GPSMeasureMode",
+	0x000b: "GPSDOP",
+	0x000c: "GPSSpeedRef",
+	0x000d: "GPSSpeed",
+	0x000e: "GPSTrackRef",
+	0x000f: "GPSTrack",
+	0x0010: "GPSImgDirectionRef",
+	0x0011: "GPSImgDirection",
+	0x0012: "GPSMapDatum",
+	0x0013: "GPSDestLatitudeRef",
+	0x0014: "GPSDestLatitude",
+	0x0015: "GPSDestLongitudeRef",
+	0x0016: "GPSDestLongitude",
+	0x0017: "GPSDestBearingRef",
+	0x0018: "GPSDestBearing",
+	0x0019: "GPSDestDistanceRef",
+	0x001a: "GPSDestDistance",
+	0x001b: "GPSProcessingMethod",
+	0x001c: "GPSAreaInformation",
+	0x001d: "GPSDateStamp",
+	0x001e: "GPSDifferential",
+	0x001f: "GPSHPositioningError",
+}
+
 var typeValueComponetByte = map[int]int{
 	1:  1, // unsigned byte
 	2:  1, // ascii strings
@@ -578,7 +613,7 @@ func exifRunner(core *img.Core) map[string]img.Value {
 	tagStartIndex := app1BytesIndex + 20
 	// 基础的数据偏移量， 从大端小端位置开始算起
 	baseOffset := exifBytesIndex + 6
-	parseTag(fileBytes, tagStartIndex, tagSize, baseOffset, &value, isLow)
+	parseTag(fileBytes, tagStartIndex, tagSize, baseOffset, &tagNames, &value, isLow)
 
 	return map[string]img.Value{
 		"exif": {
@@ -588,13 +623,14 @@ func exifRunner(core *img.Core) map[string]img.Value {
 	}
 }
 
-func parseTag(fileBytes []byte, offset int, tagSize int, valueOffset int, value *map[string]img.Value, isLow bool) {
+func parseTag(fileBytes []byte, offset int, tagSize int, valueOffset int, tagNames *map[int]string, value *map[string]img.Value, isLow bool) {
 	for tagIndex := 0; tagIndex < tagSize; tagIndex++ {
 		curTagStartIndex := offset + tagIndex*12
 		tagName := utils.BytesToInt(fileBytes[curTagStartIndex : curTagStartIndex+2], isLow)
 		
-		tagNameString, exists := tagNames[tagName]
+		tagNameString, exists := (*tagNames)[tagName]
 		if !exists {
+			fmt.Println("tagNameString",tagNameString, tagName);
 			continue
 		}
 
@@ -603,11 +639,15 @@ func parseTag(fileBytes []byte, offset int, tagSize int, valueOffset int, value 
 		compnentByte, _ := typeValueComponetByte[tagType]
 		tagValueByteLen := tagValueComponentCount * compnentByte
 		tagValueOffset := fileBytes[curTagStartIndex+8 : curTagStartIndex+12]
-
-		if tagNameString == "ExifOffset" || tagNameString == "InteropOffset" {
+		
+		if tagNameString == "ExifOffset" || tagNameString == "InteropOffset" || tagNameString == "GPSInfo" {
 			exifOffset := valueOffset + utils.BytesToInt(tagValueOffset, isLow)
 			exifTagSize := utils.BytesToInt(fileBytes[exifOffset : exifOffset+2], isLow)
-			parseTag(fileBytes, exifOffset+2, exifTagSize, valueOffset, value, isLow)
+			newTagNames := tagNames
+			if (tagNameString == "GPSInfo") {
+				newTagNames = &GPSTagNames
+			}
+			parseTag(fileBytes, exifOffset+2, exifTagSize, valueOffset, newTagNames, value, isLow)
 			continue
 		}
 
@@ -635,18 +675,10 @@ func parseTag(fileBytes []byte, offset int, tagSize int, valueOffset int, value 
 				Int:  utils.BytesToInt(tagValue, isLow),
 			}
 		} else if tagType == 5 || tagType == 10 {
-			if (isLow) {
-				(*value)[tagNameString] = img.Value{
-					Type:   img.ValueTypeString,
-					String: utils.IntToString(utils.BytesToInt(tagValue[4:8], isLow)) + "/" + utils.IntToString(utils.BytesToInt(tagValue[0:4], isLow)),
-				}
-			} else {
-				(*value)[tagNameString] = img.Value{
-					Type:   img.ValueTypeString,
-					String: utils.IntToString(utils.BytesToInt(tagValue[0:4], isLow)) + "/" + utils.IntToString(utils.BytesToInt(tagValue[4:8], isLow)),
-				}
+			(*value)[tagNameString] = img.Value{
+				Type:   img.ValueTypeString,
+				String: utils.ByteToRational64uString(tagValue, isLow),
 			}
-			
 		} else {
 			fmt.Println("tagNameString",tagNameString, tagType);
 		}
@@ -658,5 +690,5 @@ func parseTag(fileBytes []byte, offset int, tagSize int, valueOffset int, value 
 	}
 	nextIFDInfoOffset += valueOffset;
 	nextIFDTagSize := utils.BytesToInt(fileBytes[nextIFDInfoOffset : nextIFDInfoOffset+2], isLow)
-	parseTag(fileBytes, nextIFDInfoOffset+2, nextIFDTagSize, valueOffset, value, isLow)
+	parseTag(fileBytes, nextIFDInfoOffset+2, nextIFDTagSize, valueOffset, tagNames, value, isLow)
 }
