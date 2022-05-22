@@ -635,10 +635,18 @@ func parseTag(fileBytes []byte, offset int, tagSize int, valueOffset int, value 
 				Int:  utils.BytesToInt(tagValue, isLow),
 			}
 		} else if tagType == 5 || tagType == 10 {
-			(*value)[tagNameString] = img.Value{
-				Type:   img.ValueTypeString,
-				String: utils.IntToString(utils.BytesToInt(tagValue[0:4], isLow)) + "/" + utils.IntToString(utils.BytesToInt(tagValue[4:8], isLow)),
+			if (isLow) {
+				(*value)[tagNameString] = img.Value{
+					Type:   img.ValueTypeString,
+					String: utils.IntToString(utils.BytesToInt(tagValue[4:8], isLow)) + "/" + utils.IntToString(utils.BytesToInt(tagValue[0:4], isLow)),
+				}
+			} else {
+				(*value)[tagNameString] = img.Value{
+					Type:   img.ValueTypeString,
+					String: utils.IntToString(utils.BytesToInt(tagValue[0:4], isLow)) + "/" + utils.IntToString(utils.BytesToInt(tagValue[4:8], isLow)),
+				}
 			}
+			
 		} else {
 			fmt.Println("tagNameString",tagNameString, tagType);
 		}

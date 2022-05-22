@@ -57,7 +57,7 @@ function formatResult(result) {
         data[key] = valueInfo.Rgba;
         break;
       case 4:
-        data[key] = valueInfo.Values;
+        data[key] = formatResult(valueInfo.Values);
         break;
     }
   });
