@@ -1,13 +1,19 @@
 package utils
 
-import "strconv"
+import (
+	"strconv"
+)
 
 // BytesToInt []byte to int
-func BytesToInt(bytes []byte) int {
+func BytesToInt(bytes []byte, isLow bool) int {
 	byteLen := len(bytes)
 	res := 0
 	for index, bt := range bytes {
-		res += int(bt) << ((byteLen - index - 1) * 8)
+		if (isLow) {
+			res += int(bt) << (index * 8);
+		} else {
+			res += int(bt) << ((byteLen - index - 1) * 8)
+		}
 	}
 	return res
 }

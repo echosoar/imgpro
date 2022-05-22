@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"fmt"
 	img "github.com/echosoar/imgpro/core"
 	utils "github.com/echosoar/imgpro/utils"
 )
@@ -23,8 +24,8 @@ var tagNames = map[int]string{
 	0x010a: "FillOrder",
 	0x010d: "DocumentName",
 	0x010e: "ImageDescription",
-	0x010f: "Make",
-	0x0110: "Model",
+	0x010f: "Make",															// 设备制造商
+	0x0110: "Model",														// 设备型号
 	0x0111: "StripOffsets",
 	0x0112: "Orientation",
 	0x0115: "SamplesPerPixel",
@@ -238,10 +239,10 @@ var tagNames = map[int]string{
 	0x9101: "ComponentsConfiguration",
 	0x9102: "CompressedBitsPerPixel",
 	0x9201: "ShutterSpeedValue",
-	0x9202: "ApertureValue",
-	0x9203: "BrightnessValue",
+	0x9202: "ApertureValue",													// 光圈
+	0x9203: "BrightnessValue",												// 亮度
 	0x9204: "ExposureCompensation",
-	0x9205: "MaxApertureValue",
+	0x9205: "MaxApertureValue",												// 最大光圈
 	0x9206: "SubjectDistance",
 	0x9207: "MeteringMode",
 	0x9208: "LightSource",
@@ -325,9 +326,9 @@ var tagNames = map[int]string{
 	0xa420: "ImageUniqueID",
 	0xa430: "OwnerName",
 	0xa431: "SerialNumber",
-	0xa432: "LensInfo",
-	0xa433: "LensMake",
-	0xa434: "LensModel",
+	0xa432: "LensInfo",											// 镜头信息
+	0xa433: "LensMake",											// 镜头厂商
+	0xa434: "LensModel",										// 镜头型号
 	0xa435: "LensSerialNumber",
 	0xa460: "CompositeImage",
 	0xa461: "CompositeImageCount",
@@ -571,14 +572,13 @@ func exifRunner(core *img.Core) map[string]img.Value {
 	// 24-27 00 00 00 06 数据的字节数 count 6
 	// 28-31 00 00 00 86 数据的位置偏移量（从大端小端位置开始算起 + 1d） = a3
 
-	// isLow := string(fileBytes[app1BytesIndex+10:app1BytesIndex+12]) == "II"
-
-	tagSize := utils.BytesToInt(fileBytes[app1BytesIndex+18 : app1BytesIndex+20])
+	// 大小端
+	isLow := string(fileBytes[app1BytesIndex+10:app1BytesIndex+12]) == "II";
+	tagSize := utils.BytesToInt(fileBytes[app1BytesIndex+18 : app1BytesIndex+20], isLow)
 	tagStartIndex := app1BytesIndex + 20
-
 	// 基础的数据偏移量， 从大端小端位置开始算起
 	baseOffset := exifBytesIndex + 6
-	parseTag(fileBytes, tagStartIndex, tagSize, baseOffset, &value)
+	parseTag(fileBytes, tagStartIndex, tagSize, baseOffset, &value, isLow)
 
 	return map[string]img.Value{
 		"exif": {
@@ -588,38 +588,37 @@ func exifRunner(core *img.Core) map[string]img.Value {
 	}
 }
 
-func parseTag(fileBytes []byte, offset int, tagSize int, valueOffset int, value *map[string]img.Value) {
+func parseTag(fileBytes []byte, offset int, tagSize int, valueOffset int, value *map[string]img.Value, isLow bool) {
 	for tagIndex := 0; tagIndex < tagSize; tagIndex++ {
 		curTagStartIndex := offset + tagIndex*12
-		tagName := utils.BytesToInt(fileBytes[curTagStartIndex : curTagStartIndex+2])
-
+		tagName := utils.BytesToInt(fileBytes[curTagStartIndex : curTagStartIndex+2], isLow)
+		
 		tagNameString, exists := tagNames[tagName]
 		if !exists {
 			continue
 		}
 
-		tagType := utils.BytesToInt(fileBytes[curTagStartIndex+2 : curTagStartIndex+4])
-		tagValueComponentCount := utils.BytesToInt(fileBytes[curTagStartIndex+4 : curTagStartIndex+8])
+		tagType := utils.BytesToInt(fileBytes[curTagStartIndex+2 : curTagStartIndex+4], isLow)
+		tagValueComponentCount := utils.BytesToInt(fileBytes[curTagStartIndex+4 : curTagStartIndex+8], isLow)
 		compnentByte, _ := typeValueComponetByte[tagType]
 		tagValueByteLen := tagValueComponentCount * compnentByte
 		tagValueOffset := fileBytes[curTagStartIndex+8 : curTagStartIndex+12]
 
-		if tagNameString == "ExifOffset" {
-			exifOffset := valueOffset + utils.BytesToInt(tagValueOffset)
-			exifTagSize := utils.BytesToInt(fileBytes[exifOffset : exifOffset+2])
-			parseTag(fileBytes, exifOffset+2, exifTagSize, valueOffset, value)
+		if tagNameString == "ExifOffset" || tagNameString == "InteropOffset" {
+			exifOffset := valueOffset + utils.BytesToInt(tagValueOffset, isLow)
+			exifTagSize := utils.BytesToInt(fileBytes[exifOffset : exifOffset+2], isLow)
+			parseTag(fileBytes, exifOffset+2, exifTagSize, valueOffset, value, isLow)
 			continue
 		}
 
 		var tagValue []byte
 		if tagValueByteLen > 4 {
-			tagValueOffsetIndex := valueOffset + utils.BytesToInt(tagValueOffset)
+			tagValueOffsetIndex := valueOffset + utils.BytesToInt(tagValueOffset, isLow)
 			tagValue = fileBytes[tagValueOffsetIndex : tagValueOffsetIndex+tagValueByteLen]
 			// offfset
 		} else {
 			tagValue = tagValueOffset
 		}
-
 		if tagType == 2 || tagType == 7 {
 			(*value)[tagNameString] = img.Value{
 				Type:   img.ValueTypeString,
@@ -628,18 +627,28 @@ func parseTag(fileBytes []byte, offset int, tagSize int, valueOffset int, value 
 		} else if tagType == 3 {
 			(*value)[tagNameString] = img.Value{
 				Type: img.ValueTypeInt,
-				Int:  utils.BytesToInt(tagValue[0:2]),
+				Int:  utils.BytesToInt(tagValue[0:2], isLow),
 			}
 		} else if tagType == 4 {
 			(*value)[tagNameString] = img.Value{
 				Type: img.ValueTypeInt,
-				Int:  utils.BytesToInt(tagValue),
+				Int:  utils.BytesToInt(tagValue, isLow),
 			}
 		} else if tagType == 5 || tagType == 10 {
 			(*value)[tagNameString] = img.Value{
 				Type:   img.ValueTypeString,
-				String: utils.IntToString(utils.BytesToInt(tagValue[0:4])) + "/" + utils.IntToString(utils.BytesToInt(tagValue[4:8])),
+				String: utils.IntToString(utils.BytesToInt(tagValue[0:4], isLow)) + "/" + utils.IntToString(utils.BytesToInt(tagValue[4:8], isLow)),
 			}
+		} else {
+			fmt.Println("tagNameString",tagNameString, tagType);
 		}
 	}
+	nextIFDIndex := offset + tagSize* 12;
+	nextIFDInfoOffset := utils.BytesToInt(fileBytes[nextIFDIndex : nextIFDIndex+4], isLow);
+	if (nextIFDInfoOffset  == 0) {
+		return;
+	}
+	nextIFDInfoOffset += valueOffset;
+	nextIFDTagSize := utils.BytesToInt(fileBytes[nextIFDInfoOffset : nextIFDInfoOffset+2], isLow)
+	parseTag(fileBytes, nextIFDInfoOffset+2, nextIFDTagSize, valueOffset, value, isLow)
 }
