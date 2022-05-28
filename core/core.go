@@ -146,3 +146,16 @@ func New(features []string) *Core {
 		processorMap:  make(map[string]*Processor),
 	}
 }
+
+func IterateRGBA(point RGBA) []int {
+	return []int{point.R, point.G, point.B, point.A}
+}
+
+func ColorListToRGBA(colorList []int) RGBA {
+	return RGBA{
+		colorList[0],
+		colorList[1],
+		colorList[2],
+		colorList[3],
+	}
+}

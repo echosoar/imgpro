@@ -39,7 +39,7 @@ func main() {
 | Width/Height| wh | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Frames | frame | ✅ | ✅ |
 | Color data | rgba | ✅ | ✅ |
-| Color proportion） | hue | ✅ | ✅ |
+| Color proportion | hue | ✅ | ✅ |
 | Exif | exif |  | ✅ |
 | Create Time | time | |✅ | | | |
 | Position(GPS) Info | position | |✅  | | | |
