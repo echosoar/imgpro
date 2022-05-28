@@ -18,10 +18,13 @@ func deviceRunner(core *img.Core) map[string]img.Value {
 
 	exif := core.Result["exif"].Values
 
-	model, exists := exif["Model"]
-
-	if exists {
-		device = model.String
+	attributes := []string{"Model", "Software"}
+	for _, attr := range attributes {
+		model, exists := exif[attr]
+		if exists {
+			device = model.String
+			break
+		}
 	}
 
 	return map[string]img.Value{

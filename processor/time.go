@@ -18,10 +18,13 @@ func timeRunner(core *img.Core) map[string]img.Value {
 
 	exif := core.Result["exif"].Values
 
-	modifyDate, exists := exif["ModifyDate"]
-
-	if exists {
-		time = modifyDate.String
+	attributes := []string{"ModifyDate", "CreateDate"}
+	for _, attr := range attributes {
+		model, exists := exif[attr]
+		if exists {
+			time = model.String
+			break
+		}
 	}
 
 	return map[string]img.Value{
