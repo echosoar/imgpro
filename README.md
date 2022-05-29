@@ -44,6 +44,7 @@ func main() {
 | Create Time | time | |✅ | | | |
 | Position(GPS) Info | position | |✅  | | | |
 | Device Info | device | | ✅| | | |
+| QR Code | qrcode | ✅ | ✅| | | |
 
 ---
 

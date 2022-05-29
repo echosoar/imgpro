@@ -45,7 +45,3 @@ func AverageColor(list []img.RGBA) img.RGBA {
 		A: sumA,
 	}
 }
-
-func IsSameColor(pointA img.RGBA, pointB img.RGBA) bool {
-	return pointA.R == pointB.R && pointA.G == pointB.G && pointA.B == pointB.B && pointA.A == pointB.A
-}

@@ -25,6 +25,8 @@ func initial(features []string) *img.Core {
 	pro.DeviceProcessor(core)
 	// position
 	pro.PositionProcessor(core)
+	// qrcode
+	pro.QRCodeProcessor(core)
 	return core
 }
 

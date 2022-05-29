@@ -29,7 +29,7 @@ func (k *KMeans) Run() {
 func (k *KMeans) initRange() {
 	valueRange := make([]kMeansValueRange, 4)
 	for _, point := range k.AllPoints {
-		for attrIndex, value := range img.IterateRGBA(point) {
+		for attrIndex, value := range IterateRGBA(point) {
 			attrRange := &valueRange[attrIndex]
 			if value < attrRange.Min {
 				attrRange.Min = value
@@ -77,7 +77,7 @@ func (k *KMeans) calcCenter() bool {
 				attrRange := k.valueRange[index]
 				pointColors[index] = attrRange.Min + rand.Intn(attrRange.Max-attrRange.Min)
 			}
-			k.Center[i] = img.ColorListToRGBA(pointColors)
+			k.Center[i] = ColorListToRGBA(pointColors)
 			isNewCenter = true
 			continue
 		}
@@ -98,7 +98,7 @@ func (k *KMeans) initCenter() {
 		for attrIndex, attrRange := range k.valueRange {
 			point[attrIndex] = attrRange.Min + rand.Intn(attrRange.Max-attrRange.Min)
 		}
-		k.Center = append(k.Center, img.ColorListToRGBA(point))
+		k.Center = append(k.Center, ColorListToRGBA(point))
 	}
 }
 
