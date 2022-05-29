@@ -2,6 +2,8 @@ package processor
 
 import (
 	"fmt"
+	"math"
+	"sort"
 
 	img "github.com/echosoar/imgpro/core"
 	method "github.com/echosoar/imgpro/method"
@@ -73,13 +75,16 @@ type QRCode struct {
 	Pixels     []img.RGBA
 	greyPixels []uint8
 	regions    []*QRCodeRegion
-	corners    []*QRCodeRegion
+	corners    []*QRCodeCorner
 }
 
 type QRCodeRegion struct {
 	posi         img.ValuePosition
 	size         int
 	cornersIndex int
+}
+type QRCodeCorner struct {
+	corners []img.ValuePosition
 }
 
 func (qr *QRCode) Run() {
@@ -211,16 +216,16 @@ func (qr *QRCode) findCorners() {
 }
 
 func (qr *QRCode) checkIsCorner(line, row int, pb []int) {
-	cornerRightLine := qr.regionCode(line, row-pb[4])
-	cornerCenter := qr.regionCode(line, row-pb[4]-pb[3]-pb[2])
-	cornerLeftLine := qr.regionCode(line, row-pb[4]-pb[3]-pb[2]-pb[1]-pb[0])
+	regionRightLineIndex := qr.regionCode(line, row-pb[4])
+	regionCenterIndex := qr.regionCode(line, row-pb[4]-pb[3]-pb[2])
+	regionLeftLineIndex := qr.regionCode(line, row-pb[4]-pb[3]-pb[2]-pb[1]-pb[0])
 
-	if cornerRightLine < 0 || cornerCenter < 0 || cornerLeftLine < 0 || cornerLeftLine != cornerRightLine || cornerLeftLine == cornerCenter {
+	if regionRightLineIndex < 0 || regionCenterIndex < 0 || regionLeftLineIndex < 0 || regionLeftLineIndex != regionRightLineIndex || regionLeftLineIndex == regionCenterIndex {
 		return
 	}
 
-	centerRegion := qr.getRegionByRegionIndex(cornerCenter)
-	lineRegion := qr.getRegionByRegionIndex(cornerRightLine)
+	centerRegion := qr.getRegionByRegionIndex(regionCenterIndex)
+	lineRegion := qr.getRegionByRegionIndex(regionRightLineIndex)
 
 	// 已经放在某一个 corner 之中了
 	if centerRegion.cornersIndex >= 0 || lineRegion.cornersIndex >= 0 {
@@ -231,7 +236,7 @@ func (qr *QRCode) checkIsCorner(line, row int, pb []int) {
 	if ratio < 10 || ratio > 70 {
 		return
 	}
-	qr.newCorner(lineRegion, centerRegion)
+	qr.newCorner(regionRightLineIndex, lineRegion, centerRegion)
 }
 
 func (qr *QRCode) regionCode(line, row int) int {
@@ -317,10 +322,105 @@ func (qr *QRCode) getRegionByRegionIndex(index int) *QRCodeRegion {
 	return qr.regions[index-qrRegionIndexDiff]
 }
 
-func (qr *QRCode) newCorner(lineRegion *QRCodeRegion, centerRegion *QRCodeRegion) {
-	lineRegion.cornersIndex = 1
-	centerRegion.cornersIndex = 1
-	fmt.Println("new corner", lineRegion, centerRegion)
+func (qr *QRCode) newCorner(lineRegionIndex int, lineRegion *QRCodeRegion, centerRegion *QRCodeRegion) {
+	corner := &QRCodeCorner{}
+	qr.corners = append(qr.corners, corner)
+	cornerIndex := len(qr.corners)
+	lineRegion.cornersIndex = cornerIndex
+	centerRegion.cornersIndex = cornerIndex
+	lineRegionIndexUint := uint8(lineRegionIndex)
+	// 寻找四个顶点
+	allPixelPositions := make([]img.ValuePosition, 0)
+
+	firstCornerMaxDistance := 0
+	firstCornerIndex := 0
+
+	for line := 0; line < qr.Height; line++ {
+		for row := 0; row < qr.Width; row++ {
+			index := line*qr.Width + row
+			if qr.greyPixels[index] == lineRegionIndexUint {
+				allPixelPositions = append(allPixelPositions, img.ValuePosition{
+					X: row,
+					Y: line,
+				})
+				pixelIndex := len(allPixelPositions) - 1
+				distance := int(math.Pow(float64(row-lineRegion.posi.X), 2.0) + math.Pow(float64(line-lineRegion.posi.Y), 2.0))
+				if distance > firstCornerMaxDistance {
+					firstCornerMaxDistance = distance
+					firstCornerIndex = pixelIndex
+				}
+			}
+		}
+	}
+
+	firstPixelPosi := allPixelPositions[firstCornerIndex]
+
+	secondCornerMaxDistance := 0
+	secondCornerIndex := 0
+	for index, posi := range allPixelPositions {
+		distance := int(math.Pow(float64(posi.X-firstPixelPosi.X), 2.0) + math.Pow(float64(posi.Y-firstPixelPosi.Y), 2.0))
+		if distance > secondCornerMaxDistance {
+			secondCornerMaxDistance = distance
+			secondCornerIndex = index
+		}
+	}
+
+	secondPixelPosi := allPixelPositions[secondCornerIndex]
+
+	thirdCornerMaxDistance := 0
+	thirdCornerIndex := 0
+	for index, posi := range allPixelPositions {
+		distance := int(math.Sqrt(math.Pow(float64(posi.X-firstPixelPosi.X), 2.0)+math.Pow(float64(posi.Y-firstPixelPosi.Y), 2.0)) + math.Sqrt(math.Pow(float64(posi.X-secondPixelPosi.X), 2.0)+math.Pow(float64(posi.Y-secondPixelPosi.Y), 2.0)))
+		if distance > thirdCornerMaxDistance {
+			thirdCornerMaxDistance = distance
+			thirdCornerIndex = index
+		}
+	}
+
+	thirdPixelPosi := allPixelPositions[thirdCornerIndex]
+
+	if firstPixelPosi.X == secondPixelPosi.X {
+		secondPixelPosi, thirdPixelPosi = thirdPixelPosi, secondPixelPosi
+	}
+	k := float64(secondPixelPosi.Y-firstPixelPosi.Y) / float64(secondPixelPosi.X-firstPixelPosi.X)
+	b := float64(firstPixelPosi.Y) - k*float64(firstPixelPosi.X)
+
+	thirdIsUnderLine := (float64(thirdPixelPosi.Y) - k*float64(thirdPixelPosi.X)) > b
+
+	fouthCornerMaxDistance := 0
+	fouthCornerIndex := 0
+	for index, posi := range allPixelPositions {
+		posiIsUnderLine := (float64(posi.Y) - k*float64(posi.X)) > b
+		if thirdIsUnderLine == posiIsUnderLine {
+			continue
+		}
+		distance := int(math.Sqrt(math.Pow(float64(posi.X-firstPixelPosi.X), 2.0)+math.Pow(float64(posi.Y-firstPixelPosi.Y), 2.0)) + math.Sqrt(math.Pow(float64(posi.X-secondPixelPosi.X), 2.0)+math.Pow(float64(posi.Y-secondPixelPosi.Y), 2.0)))
+		if distance > fouthCornerMaxDistance {
+			fouthCornerMaxDistance = distance
+			fouthCornerIndex = index
+		}
+	}
+
+	fouthCornerPosi := allPixelPositions[fouthCornerIndex]
+
+	corners := []img.ValuePosition{
+		firstPixelPosi,
+		secondPixelPosi,
+		thirdPixelPosi,
+		fouthCornerPosi,
+	}
+
+	// 按照顺时针方向，左上角为第一个
+	sort.SliceStable(corners, func(i, j int) bool {
+		return corners[j].Y > corners[i].Y
+	})
+	if corners[0].X > corners[1].X {
+		corners[1], corners[0] = corners[0], corners[1]
+	}
+	if corners[3].X > corners[2].X {
+		corners[3], corners[2] = corners[2], corners[3]
+	}
+	corner.corners = corners
 }
 
 func (qr *QRCode) output() {
@@ -332,5 +432,5 @@ func (qr *QRCode) output() {
 			rgba[index] = method.ColorListToRGBA([]int{0, 0, 0, 255})
 		}
 	}
-	method.OutputToImg("./test/qrout.jpg", qr.Width, qr.Height, rgba)
+	method.OutputToImg("./ignore_qrout.jpg", qr.Width, qr.Height, rgba)
 }

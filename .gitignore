@@ -10,3 +10,4 @@
 node_modules
 *.wasm
 .gitpod.yml
+ignore_*
