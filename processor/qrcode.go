@@ -76,6 +76,7 @@ type QRCode struct {
 	greyPixels []uint8
 	regions    []*QRCodeRegion
 	corners    []*QRCodeCorner
+	codeItems  []*QRCodeItem
 }
 
 type QRCodeRegion struct {
@@ -84,13 +85,24 @@ type QRCodeRegion struct {
 	cornersIndex int
 }
 type QRCodeCorner struct {
-	corners []img.ValuePosition
+	corners      []img.ValuePosition
+	matrix       []float64
+	center       img.ValuePosition
+	attachToCode int
+}
+
+type QRCodeItem struct {
+	corners []*QRCodeCorner
+	matrix  []float64
+	version int
+	size    int
 }
 
 func (qr *QRCode) Run() {
 	qr.grayscale()
 	qr.binarization()
 	qr.findCorners()
+	qr.polymerizate()
 	qr.output()
 	fmt.Println("qr", len(qr.greyPixels))
 }
@@ -125,6 +137,7 @@ const (
 	qrPixelRegion     = 2
 	qrRegionIndexDiff = 2
 	qrMaxRegion       = 20
+	qrCornerSize      = 10
 )
 
 // 二值化
@@ -323,7 +336,9 @@ func (qr *QRCode) getRegionByRegionIndex(index int) *QRCodeRegion {
 }
 
 func (qr *QRCode) newCorner(lineRegionIndex int, lineRegion *QRCodeRegion, centerRegion *QRCodeRegion) {
-	corner := &QRCodeCorner{}
+	corner := &QRCodeCorner{
+		attachToCode: -1,
+	}
 	qr.corners = append(qr.corners, corner)
 	cornerIndex := len(qr.corners)
 	lineRegion.cornersIndex = cornerIndex
@@ -421,6 +436,8 @@ func (qr *QRCode) newCorner(lineRegionIndex int, lineRegion *QRCodeRegion, cente
 		corners[3], corners[2] = corners[2], corners[3]
 	}
 	corner.corners = corners
+	corner.matrix = method.PerspectiveMap(&corner.corners, qrCornerSize, qrCornerSize)
+	corner.center = method.PerspectiveTransform(&corner.matrix, qrCornerSize/2, qrCornerSize/2)
 }
 
 func (qr *QRCode) output() {
@@ -433,4 +450,93 @@ func (qr *QRCode) output() {
 		}
 	}
 	method.OutputToImg("./ignore_qrout.jpg", qr.Width, qr.Height, rgba)
+}
+
+// 聚合多个 corner，确认一张二维码
+// 一个 corner 有横向和纵向相对应的 corner的时候，才有可能是一个二维码
+func (qr *QRCode) polymerizate() {
+	for index, corner := range qr.corners {
+		if corner.attachToCode >= 0 {
+			continue
+		}
+		horizontalOppositeCorners := make([]*QRCodeCorner, 0)
+		horizontalOppositeCornerDistance := make([]float64, 0)
+		verticalOppositeCorners := make([]*QRCodeCorner, 0)
+		verticalOppositeCornerDistance := make([]float64, 0)
+		for testIndex, testCorner := range qr.corners {
+			if testIndex == index || testCorner.attachToCode >= 0 {
+				continue
+			}
+			newPosi := method.PerspectiveTransformBack(&corner.matrix, testCorner.center)
+
+			newPosi.X = int(math.Abs(float64(newPosi.X) - qrCornerSize/2))
+			newPosi.Y = int(math.Abs(float64(newPosi.Y) - qrCornerSize/2))
+
+			if float64(newPosi.X) < 0.2*float64(newPosi.Y) {
+				horizontalOppositeCorners = append(horizontalOppositeCorners, testCorner)
+				horizontalOppositeCornerDistance = append(horizontalOppositeCornerDistance, float64(newPosi.Y))
+			}
+			if float64(newPosi.Y) < 0.2*float64(newPosi.X) {
+				verticalOppositeCorners = append(verticalOppositeCorners, testCorner)
+				verticalOppositeCornerDistance = append(verticalOppositeCornerDistance, float64(newPosi.X))
+			}
+		}
+		if len(horizontalOppositeCorners) == 0 || len(verticalOppositeCorners) == 0 {
+			continue
+		}
+
+		bestScore := 0.0
+		bestH := -1
+		bestV := -1
+		for hIndex := range horizontalOppositeCorners {
+			for vIndex := range verticalOppositeCorners {
+				score := math.Abs(1.0 - horizontalOppositeCornerDistance[hIndex]/verticalOppositeCornerDistance[vIndex])
+				if score > 2.5 {
+					continue
+				}
+				if bestH < 0 || score < bestScore {
+					bestH = hIndex
+					bestV = vIndex
+					bestScore = score
+				}
+			}
+		}
+
+		if bestH < 0 || bestV < 0 {
+			continue
+		}
+		qr.polymerizateExec(corner, horizontalOppositeCorners[bestH], verticalOppositeCorners[bestV])
+	}
+}
+
+// 将3个corner处理成一个二维码
+func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCorner, vCorner *QRCodeCorner) {
+	// 转换顺序，顺时针
+	// kVH := float64(vCorner.center.Y-hCorner.center.Y) / float64(vCorner.center.X-hCorner.center.X)
+	// kCH := float64(centerCorner.center.Y-hCorner.center.Y) / float64(centerCorner.center.X-hCorner.center.X)
+	// 避免除以零，转换上述公式
+	if float64(vCorner.center.Y-hCorner.center.Y)*float64(centerCorner.center.X-hCorner.center.X) < float64(centerCorner.center.Y-hCorner.center.Y)*float64(vCorner.center.X-hCorner.center.X) {
+		hCorner, vCorner = vCorner, hCorner
+	}
+
+	corners := []*QRCodeCorner{hCorner, centerCorner, vCorner}
+	qrCodeItem := &QRCodeItem{
+		corners: corners,
+	}
+	qr.codeItems = append(qr.codeItems, qrCodeItem)
+	codeItemIndex := len(qr.codeItems) - 1
+	centerCorner.attachToCode = codeItemIndex
+	hCorner.attachToCode = codeItemIndex
+	vCorner.attachToCode = codeItemIndex
+
+	// TODO: 检测横纵两条线是否在 center 相交
+	// TODO: 获取二维码版本
+	qrCodeItem.version = 1
+	qrCodeItem.size = qrCodeItem.version*4 + 17
+	//  TODO: 根据图像两点获取第四点
+	// TODO: 获取图像透视矩阵
+	// posies := []img.ValuePosition{hCorner.corners[0], centerCorner.corners[0], vCorner.corners[0]}
+	// qrCodeItem.matrix = method.PerspectiveMap(&posies, float64(qrCodeItem.size-qrCornerSize), float64(qrCodeItem.size-qrCornerSize))
+	// TODO: 获取图像透视像素点
+	fmt.Println("qrCodeItem", qrCodeItem.corners[0].corners[0], qrCodeItem.corners[1].corners[0], qrCodeItem.corners[2].corners[0])
 }
