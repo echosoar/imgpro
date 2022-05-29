@@ -30,7 +30,14 @@ type Value struct {
 	String string
 	Bytes  []byte
 	Rgba   [][]RGBA
+	Rect   []ValuePosition
 	Values map[string]Value
+	List   []Value
+}
+
+type ValuePosition struct {
+	X int
+	Y int
 }
 
 // RGBA 值
@@ -55,6 +62,10 @@ const (
 	ValueTypeRGBA ValueType = 3
 	// ValueTypeMap map[key] ValueType
 	ValueTypeMap ValueType = 4
+	// ValueTypeList []value
+	ValueTypeList ValueType = 5
+	// ValueTypeRect []ValuePosition
+	ValueTypeRect ValueType = 6
 )
 
 // Processor 处理器
