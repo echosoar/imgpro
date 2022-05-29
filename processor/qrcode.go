@@ -86,6 +86,7 @@ func (qr *QRCode) Run() {
 	qr.grayscale()
 	qr.binarization()
 	qr.findCorners()
+	qr.output()
 	fmt.Println("qr", len(qr.greyPixels))
 }
 
@@ -320,4 +321,16 @@ func (qr *QRCode) newCorner(lineRegion *QRCodeRegion, centerRegion *QRCodeRegion
 	lineRegion.cornersIndex = 1
 	centerRegion.cornersIndex = 1
 	fmt.Println("new corner", lineRegion, centerRegion)
+}
+
+func (qr *QRCode) output() {
+	rgba := make([]img.RGBA, len(qr.greyPixels))
+	for index, pixel := range qr.greyPixels {
+		if pixel > 0 {
+			rgba[index] = method.ColorListToRGBA([]int{255, 255, 255, 255})
+		} else {
+			rgba[index] = method.ColorListToRGBA([]int{0, 0, 0, 255})
+		}
+	}
+	method.OutputToImg("./test/qrout.jpg", qr.Width, qr.Height, rgba)
 }

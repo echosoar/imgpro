@@ -73,7 +73,7 @@ func (k *KMeans) calcCenter() bool {
 		clusterPoints := k.groupPoint[i]
 		if len(clusterPoints) == 0 {
 			pointColors := make([]int, 4)
-			for index, _ := range pointColors {
+			for index := range pointColors {
 				attrRange := k.valueRange[index]
 				pointColors[index] = attrRange.Min + rand.Intn(attrRange.Max-attrRange.Min)
 			}
