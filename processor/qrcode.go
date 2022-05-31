@@ -96,6 +96,7 @@ type QRCodeItem struct {
 	matrix  []float64
 	version int
 	size    int
+	Pixels  []int
 }
 
 func (qr *QRCode) Run() {
@@ -136,8 +137,8 @@ const (
 	qrPixelBlack      = 1
 	qrPixelRegion     = 2
 	qrRegionIndexDiff = 2
-	qrMaxRegion       = 20
-	qrCornerSize      = 10
+	qrMaxRegion       = 256
+	qrCornerSize      = 7
 )
 
 // 二值化
@@ -207,10 +208,13 @@ func (qr *QRCode) findCorners() {
 				runCount++
 
 				if color == 0 && runCount >= 5 {
+
 					var avg, err int
 					ok := true
 					avg = (pb[0] + pb[1] + pb[3] + pb[4]) / 4
+
 					err = avg * 3 / 4
+
 					for i := 0; i < 5; i++ {
 						if pb[i] < check[i]*avg-err || pb[i] > check[i]*avg+err {
 							ok = false
@@ -239,7 +243,6 @@ func (qr *QRCode) checkIsCorner(line, row int, pb []int) {
 
 	centerRegion := qr.getRegionByRegionIndex(regionCenterIndex)
 	lineRegion := qr.getRegionByRegionIndex(regionRightLineIndex)
-
 	// 已经放在某一个 corner 之中了
 	if centerRegion.cornersIndex >= 0 || lineRegion.cornersIndex >= 0 {
 		return
@@ -394,12 +397,12 @@ func (qr *QRCode) newCorner(lineRegionIndex int, lineRegion *QRCodeRegion, cente
 
 	thirdPixelPosi := allPixelPositions[thirdCornerIndex]
 
-	if firstPixelPosi.X == secondPixelPosi.X {
+	lineInfo := method.PointsToLine(firstPixelPosi, secondPixelPosi)
+	if lineInfo.IsX {
 		secondPixelPosi, thirdPixelPosi = thirdPixelPosi, secondPixelPosi
 	}
-	k := float64(secondPixelPosi.Y-firstPixelPosi.Y) / float64(secondPixelPosi.X-firstPixelPosi.X)
-	b := float64(firstPixelPosi.Y) - k*float64(firstPixelPosi.X)
 
+	k, b := lineInfo.K, lineInfo.B
 	thirdIsUnderLine := (float64(thirdPixelPosi.Y) - k*float64(thirdPixelPosi.X)) > b
 
 	fouthCornerMaxDistance := 0
@@ -443,7 +446,7 @@ func (qr *QRCode) newCorner(lineRegionIndex int, lineRegion *QRCodeRegion, cente
 func (qr *QRCode) output() {
 	rgba := make([]img.RGBA, len(qr.greyPixels))
 	for index, pixel := range qr.greyPixels {
-		if pixel > 0 {
+		if pixel <= 0 {
 			rgba[index] = method.ColorListToRGBA([]int{255, 255, 255, 255})
 		} else {
 			rgba[index] = method.ColorListToRGBA([]int{0, 0, 0, 255})
@@ -471,7 +474,6 @@ func (qr *QRCode) polymerizate() {
 
 			newPosi.X = int(math.Abs(float64(newPosi.X) - qrCornerSize/2))
 			newPosi.Y = int(math.Abs(float64(newPosi.Y) - qrCornerSize/2))
-
 			if float64(newPosi.X) < 0.2*float64(newPosi.Y) {
 				horizontalOppositeCorners = append(horizontalOppositeCorners, testCorner)
 				horizontalOppositeCornerDistance = append(horizontalOppositeCornerDistance, float64(newPosi.Y))
@@ -519,7 +521,20 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 		hCorner, vCorner = vCorner, hCorner
 	}
 
+	// 横向的左边与纵向的 上边交点就是第四个点，为什么不能用横向的右边与纵向的下边，是因为避免外围影响
+	isExistsPoint, pointInfo := method.LineIntesect(
+		method.PointsToLine(hCorner.corners[0], hCorner.corners[1]),
+		method.PointsToLine(vCorner.corners[0], vCorner.corners[3]),
+	)
+	// isExistsPoint, pointInfo := method.LineIntesect(
+	// 	method.PointsToLine(hCorner.corners[2], hCorner.corners[3]),
+	// 	method.PointsToLine(vCorner.corners[1], vCorner.corners[2]),
+	// )
+	if !isExistsPoint {
+		return
+	}
 	corners := []*QRCodeCorner{hCorner, centerCorner, vCorner}
+
 	qrCodeItem := &QRCodeItem{
 		corners: corners,
 	}
@@ -531,12 +546,124 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 
 	// TODO: 检测横纵两条线是否在 center 相交
 	// TODO: 获取二维码版本
-	qrCodeItem.version = 1
+	qrCodeItem.version = 5
 	qrCodeItem.size = qrCodeItem.version*4 + 17
-	//  TODO: 根据图像两点获取第四点
-	// TODO: 获取图像透视矩阵
-	// posies := []img.ValuePosition{hCorner.corners[0], centerCorner.corners[0], vCorner.corners[0]}
-	// qrCodeItem.matrix = method.PerspectiveMap(&posies, float64(qrCodeItem.size-qrCornerSize), float64(qrCodeItem.size-qrCornerSize))
-	// TODO: 获取图像透视像素点
-	fmt.Println("qrCodeItem", qrCodeItem.corners[0].corners[0], qrCodeItem.corners[1].corners[0], qrCodeItem.corners[2].corners[0])
+	qrCodeItem.Pixels = make([]int, qrCodeItem.size*qrCodeItem.size)
+
+	// 获取图像透视矩阵
+	posies := []img.ValuePosition{corners[1].corners[0], corners[2].corners[0], pointInfo, corners[0].corners[0]}
+	matrix := method.PerspectiveMap(&posies, float64(qrCodeItem.size)-float64(qrCornerSize/2), float64(qrCodeItem.size)-float64(qrCornerSize/2))
+	qrCodeItem.matrix = matrix
+	qr.autoAdjustmentMatrix(qrCodeItem, &matrix)
+	rgba := make([]img.RGBA, qrCodeItem.size*qrCodeItem.size)
+	// 获取图像透视像素点
+	for line := 0; line < qrCodeItem.size; line++ {
+		for row := 0; row < qrCodeItem.size; row++ {
+			pixelIndex := line*qrCodeItem.size + row
+			qrCodeItem.Pixels[pixelIndex] = qrPixelWhite
+			rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
+			// 之所以加0.5是为了获取到像素中心
+			point := method.PerspectiveTransform(&qrCodeItem.matrix, float64(row)+0.5, float64(line)+0.5)
+			// default isWhite
+			if point.Y >= 0 && point.Y < qr.Height && point.X >= 0 && point.X < qr.Width {
+				index := point.Y*qr.Width + point.X
+				if qr.greyPixels[index] != 0 {
+					qrCodeItem.Pixels[pixelIndex] = qrPixelBlack
+					rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
+				}
+			}
+		}
+	}
+	method.OutputToImg("./ignore_target.jpg", qrCodeItem.size, qrCodeItem.size, rgba)
+}
+
+// 自动调整矩阵
+func (qr *QRCode) autoAdjustmentMatrix(qrItem *QRCodeItem, matrix *[]float64) {
+	score := qr.scoreMatrix(qrItem, matrix)
+	matrixValue := *matrix
+	matrixLen := len(matrixValue)
+	adjustmentSteps := make([]float64, matrixLen)
+	for index, matrixComponent := range matrixValue {
+		adjustmentSteps[index] = matrixComponent * 0.1
+	}
+
+	for pass := 0; pass < 20; pass++ {
+		for j := 0; j < matrixLen*2; j++ {
+			i := j >> 1
+			step := adjustmentSteps[i]
+			newMatrix := (*matrix)[:]
+			if j&1 == 1 {
+				newMatrix[i] += step
+			} else {
+				newMatrix[i] -= step
+			}
+
+			testScore := qr.scoreMatrix(qrItem, &newMatrix)
+			if testScore > score {
+
+				score = testScore
+				(*matrix)[i] = newMatrix[i]
+			}
+		}
+		for i := 0; i < matrixLen; i++ {
+			adjustmentSteps[i] *= 0.5
+		}
+	}
+	fmt.Println("matrix", matrix, score)
+	qrItem.matrix = *matrix
+}
+
+// 给透视矩阵打分
+func (qr *QRCode) scoreMatrix(qrItem *QRCodeItem, matrix *[]float64) int {
+	score := 0
+	// 给定位角打分
+	score += qr.scorePositioningAngle(qrItem, matrix)
+	return score
+}
+
+// 给定位角打分
+func (qr *QRCode) scorePositioningAngle(qrItem *QRCodeItem, matrix *[]float64) int {
+	score := 0
+	// 给定位角打分
+	score += qr.scoreArea(qrItem, matrix, 2, 2, 5, 5, true)
+	score += qr.scoreArea(qrItem, matrix, qrItem.size-5, 2, qrItem.size-2, 5, true)
+	// 左下角
+	score += qr.scoreArea(qrItem, matrix, 2, qrItem.size-5, 5, qrItem.size-2, true)
+	// black
+	score += qr.scoreArea(qrItem, matrix, 0, qrItem.size-7, 1, qrItem.size, true)
+	score += qr.scoreArea(qrItem, matrix, 6, qrItem.size-7, 7, qrItem.size, true)
+	// empty
+	score += qr.scoreArea(qrItem, matrix, 1, qrItem.size-6, 2, qrItem.size-1, false)
+	score += qr.scoreArea(qrItem, matrix, 5, qrItem.size-6, 6, qrItem.size-1, false)
+	return score
+}
+
+// 给区域打分打分
+func (qr *QRCode) scoreArea(qrItem *QRCodeItem, matrix *[]float64, fromX, fromY, targetX, targetY int, isBlack bool) int {
+	score := 0
+	// 给定位角打分
+	for x := fromX; x < targetX; x++ {
+		for y := fromY; y < targetY; y++ {
+			point := method.PerspectiveTransform(matrix, float64(x)+0.5, float64(y)+0.5)
+			if point.Y < 0 || point.Y >= qr.Height || point.X < 0 || point.X >= qr.Width {
+				continue
+			}
+			index := point.Y*qr.Width + point.X
+			if int(qr.greyPixels[index]) != 0 {
+				if isBlack {
+					score++
+				} else {
+					score--
+				}
+
+			} else {
+				if isBlack {
+					score--
+				} else {
+					score++
+				}
+			}
+		}
+	}
+	return score
 }
