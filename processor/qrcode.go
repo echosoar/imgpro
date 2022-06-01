@@ -139,6 +139,9 @@ const (
 	qrRegionIndexDiff = 2
 	qrMaxRegion       = 256
 	qrCornerSize      = 7
+	qrMustMatch       = true
+	qrIsBlack         = true
+	qrIsWhite         = false
 )
 
 // 二值化
@@ -526,10 +529,6 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 		method.PointsToLine(hCorner.corners[0], hCorner.corners[1]),
 		method.PointsToLine(vCorner.corners[0], vCorner.corners[3]),
 	)
-	// isExistsPoint, pointInfo := method.LineIntesect(
-	// 	method.PointsToLine(hCorner.corners[2], hCorner.corners[3]),
-	// 	method.PointsToLine(vCorner.corners[1], vCorner.corners[2]),
-	// )
 	if !isExistsPoint {
 		return
 	}
@@ -544,15 +543,15 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	hCorner.attachToCode = codeItemIndex
 	vCorner.attachToCode = codeItemIndex
 
-	// TODO: 检测横纵两条线是否在 center 相交
-	// TODO: 获取二维码版本
-	qrCodeItem.version = 5
+	// 获取二维码版本
+	qrCodeItem.version = qr.getVersion(qrCodeItem)
+	fmt.Println("version", qrCodeItem.version)
 	qrCodeItem.size = qrCodeItem.version*4 + 17
 	qrCodeItem.Pixels = make([]int, qrCodeItem.size*qrCodeItem.size)
 
 	// 获取图像透视矩阵
 	posies := []img.ValuePosition{corners[1].corners[0], corners[2].corners[0], pointInfo, corners[0].corners[0]}
-	matrix := method.PerspectiveMap(&posies, float64(qrCodeItem.size)-float64(qrCornerSize/2), float64(qrCodeItem.size)-float64(qrCornerSize/2))
+	matrix := method.PerspectiveMap(&posies, float64(qrCodeItem.size)-float64(qrCornerSize), float64(qrCodeItem.size)-float64(qrCornerSize))
 	qrCodeItem.matrix = matrix
 	qr.autoAdjustmentMatrix(qrCodeItem, &matrix)
 	rgba := make([]img.RGBA, qrCodeItem.size*qrCodeItem.size)
@@ -577,39 +576,99 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	method.OutputToImg("./ignore_target.jpg", qrCodeItem.size, qrCodeItem.size, rgba)
 }
 
+// 获取二维码版本
+func (qr *QRCode) getVersion(qrItem *QRCodeItem) int {
+	cornerCorners := [][]img.ValuePosition{
+		{qrItem.corners[1].corners[2], qrItem.corners[0].corners[1]},
+		{qrItem.corners[1].corners[2], qrItem.corners[2].corners[3]},
+	}
+	curMatchedBlackPoint := 0
+	for _, corners := range cornerCorners {
+		xChange := math.Abs(float64(corners[0].X - corners[1].X))
+		yChange := math.Abs(float64(corners[0].Y - corners[1].Y))
+		lineInfo := method.PointsToLine(corners[0], corners[1])
+		calcIndexFun := func(num float64) int {
+			return 0
+		}
+		var start, max float64
+		if xChange > yChange {
+			// 变化x，求y
+			start = math.Min(float64(corners[0].X), float64(corners[1].X))
+			max = start + xChange
+			calcIndexFun = func(x float64) int {
+				y := lineInfo.K*x + lineInfo.B
+				return int(y)*qr.Width + int(x)
+			}
+		} else {
+			// 变化y 求x
+			start = math.Min(float64(corners[0].Y), float64(corners[1].Y))
+			max = start + yChange
+			calcIndexFun = func(y float64) int {
+				x := 0.0
+				if lineInfo.IsX {
+					x = lineInfo.X
+				} else {
+					x = (y - lineInfo.B) / lineInfo.K
+				}
+				return int(y)*qr.Width + int(x)
+			}
+		}
+		matchedBlackPoint := 0
+		lastColor := qrIsWhite
+		for i := start; i < max; i++ {
+			index := calcIndexFun(i)
+			if qr.greyPixels[index] > 0 {
+				// isBlack
+				if lastColor == qrIsWhite {
+					matchedBlackPoint++
+				}
+				lastColor = qrIsBlack
+			} else {
+				lastColor = qrIsWhite
+			}
+		}
+		if matchedBlackPoint > curMatchedBlackPoint {
+			curMatchedBlackPoint = matchedBlackPoint
+		}
+	}
+	size := curMatchedBlackPoint*2 + 13
+	version := (size - 15) / 4
+	return version
+}
+
 // 自动调整矩阵
 func (qr *QRCode) autoAdjustmentMatrix(qrItem *QRCodeItem, matrix *[]float64) {
 	score := qr.scoreMatrix(qrItem, matrix)
+	fmt.Println("default score", score)
 	matrixValue := *matrix
 	matrixLen := len(matrixValue)
 	adjustmentSteps := make([]float64, matrixLen)
 	for index, matrixComponent := range matrixValue {
-		adjustmentSteps[index] = matrixComponent * 0.1
+		adjustmentSteps[index] = matrixComponent * 0.5
 	}
 
-	for pass := 0; pass < 20; pass++ {
+	for adjustCount := 0; adjustCount < 10; adjustCount++ {
 		for j := 0; j < matrixLen*2; j++ {
 			i := j >> 1
 			step := adjustmentSteps[i]
-			newMatrix := (*matrix)[:]
+			oldValue := (*matrix)[i]
 			if j&1 == 1 {
-				newMatrix[i] += step
+				(*matrix)[i] += step
 			} else {
-				newMatrix[i] -= step
+				(*matrix)[i] -= step
 			}
-
-			testScore := qr.scoreMatrix(qrItem, &newMatrix)
+			testScore := qr.scoreMatrix(qrItem, matrix)
 			if testScore > score {
-
 				score = testScore
-				(*matrix)[i] = newMatrix[i]
+			} else {
+				(*matrix)[i] = oldValue
 			}
 		}
 		for i := 0; i < matrixLen; i++ {
-			adjustmentSteps[i] *= 0.5
+			adjustmentSteps[i] *= 0.9
 		}
 	}
-	fmt.Println("matrix", matrix, score)
+	fmt.Println("finish score", score)
 	qrItem.matrix = *matrix
 }
 
@@ -618,47 +677,84 @@ func (qr *QRCode) scoreMatrix(qrItem *QRCodeItem, matrix *[]float64) int {
 	score := 0
 	// 给定位角打分
 	score += qr.scorePositioningAngle(qrItem, matrix)
+	// 给定位虚线打分
+	score += qr.scoreDashedLine(qrItem, matrix)
 	return score
+}
+
+type QRScoreArea struct {
+	FromX   int
+	FromY   int
+	TargetX int
+	TargetY int
+	Color   bool
 }
 
 // 给定位角打分
 func (qr *QRCode) scorePositioningAngle(qrItem *QRCodeItem, matrix *[]float64) int {
 	score := 0
-	// 给定位角打分
-	score += qr.scoreArea(qrItem, matrix, 2, 2, 5, 5, true)
-	score += qr.scoreArea(qrItem, matrix, qrItem.size-5, 2, qrItem.size-2, 5, true)
-	// 左下角
-	score += qr.scoreArea(qrItem, matrix, 2, qrItem.size-5, 5, qrItem.size-2, true)
-	// black
-	score += qr.scoreArea(qrItem, matrix, 0, qrItem.size-7, 1, qrItem.size, true)
-	score += qr.scoreArea(qrItem, matrix, 6, qrItem.size-7, 7, qrItem.size, true)
-	// empty
-	score += qr.scoreArea(qrItem, matrix, 1, qrItem.size-6, 2, qrItem.size-1, false)
-	score += qr.scoreArea(qrItem, matrix, 5, qrItem.size-6, 6, qrItem.size-1, false)
+	scoreAreaList := []QRScoreArea{
+		// 定位角中心
+		{2, qrItem.size - 5, 5, qrItem.size - 2, qrIsBlack},
+		{2, 2, 5, 5, qrIsBlack},
+		{qrItem.size - 5, 2, qrItem.size - 2, 5, qrIsBlack},
+		// 定位角边缘空白
+		{0, qrItem.size - 8, 8, qrItem.size - 7, qrIsWhite},
+		{7, qrItem.size - 7, 8, qrItem.size, qrIsWhite},
+		{qrItem.size - 8, 0, qrItem.size - 7, 8, qrIsWhite},
+		{qrItem.size - 7, 7, qrItem.size, 8, qrIsWhite},
+		// 定位角边缘黑线
+		{0, qrItem.size - 7, 1, qrItem.size, qrIsBlack},
+		{6, qrItem.size - 7, 7, qrItem.size, qrIsBlack},
+		// 定位角内部空白
+		{1, qrItem.size - 6, 2, qrItem.size - 1, qrIsWhite},
+		{5, qrItem.size - 6, 6, qrItem.size - 1, qrIsWhite},
+		{2, qrItem.size - 6, 5, qrItem.size - 5, qrIsWhite},
+		{2, qrItem.size - 2, 5, qrItem.size - 1, qrIsWhite},
+		{qrItem.size - 6, 1, qrItem.size - 1, 2, qrIsWhite},
+		{qrItem.size - 6, 5, qrItem.size - 1, 6, qrIsWhite},
+		{qrItem.size - 6, 2, qrItem.size - 5, 5, qrIsWhite},
+		{qrItem.size - 2, 2, qrItem.size - 1, 5, qrIsWhite},
+	}
+
+	for _, areaInfo := range scoreAreaList {
+		score += qr.scoreArea(qrItem, matrix, areaInfo.FromX, areaInfo.FromY, areaInfo.TargetX, areaInfo.TargetY, areaInfo.Color)
+	}
 	return score
 }
 
-// 给区域打分打分
+func (qr *QRCode) scoreDashedLine(qrItem *QRCodeItem, matrix *[]float64) int {
+	score := 0
+	for i := 7; i < qrItem.size-7; i++ {
+		color := qrIsWhite
+		if i%2 == 0 {
+			color = qrIsBlack
+		}
+		score += qr.scoreArea(qrItem, matrix, i, 6, i+1, 7, color)
+		score += qr.scoreArea(qrItem, matrix, 6, i, 7, i+1, color)
+	}
+	return score
+}
+
+// 给区域打分
 func (qr *QRCode) scoreArea(qrItem *QRCodeItem, matrix *[]float64, fromX, fromY, targetX, targetY int, isBlack bool) int {
 	score := 0
-	// 给定位角打分
 	for x := fromX; x < targetX; x++ {
 		for y := fromY; y < targetY; y++ {
 			point := method.PerspectiveTransform(matrix, float64(x)+0.5, float64(y)+0.5)
 			if point.Y < 0 || point.Y >= qr.Height || point.X < 0 || point.X >= qr.Width {
-				continue
+				return 0
 			}
 			index := point.Y*qr.Width + point.X
 			if int(qr.greyPixels[index]) != 0 {
-				if isBlack {
+				if !isBlack {
 					score++
 				} else {
-					score--
+					// score--
 				}
-
 			} else {
 				if isBlack {
-					score--
+					// score--
 				} else {
 					score++
 				}
