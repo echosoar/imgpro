@@ -773,6 +773,7 @@ func (qrItem *QRCodeItem) decode() {
 	code := method.RS_Encode(str, errCorrect)
 	fmt.Println("encode", code)
 	code[0] = 0
+	code[1] = 0
 	code[13] = 0
 	code[14] = 0
 	correct := method.RS_Error_Correct(code, errCorrect, []int{})

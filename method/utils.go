@@ -45,3 +45,23 @@ func AverageColor(list []img.RGBA) img.RGBA {
 		A: sumA,
 	}
 }
+
+func ReverseArray(arr []int) []int {
+	length := len(arr)
+	err_loc_reverse := make([]int, length)
+	for index, item := range arr {
+		err_loc_reverse[length-index-1] = item
+	}
+	return err_loc_reverse
+}
+
+func ConcatArray(arr1 []int, arr2 []int) []int {
+	all := []int{}
+	for _, item := range arr1 {
+		all = append(all, item)
+	}
+	for _, item := range arr2 {
+		all = append(all, item)
+	}
+	return all
+}

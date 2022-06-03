@@ -1,10 +1,8 @@
 package method
 
-import (
-	"fmt"
-)
-
 // 伽罗瓦域计算
+// refs: https://en.wikiversity.org/wiki/Reed%E2%80%93Solomon_codes_for_coders
+// refs: https://github.com/paukerspinner/encode-decode_ReedSolomonCode
 // 加
 func Galois_ADD(x, y int) int {
 	return x ^ y
@@ -100,6 +98,28 @@ func Galois_POLY_MUL(p []int, q []int) []int {
 	return result
 }
 
+// 多项式，除法
+func Galois_POLY_DIV(dividend, divisor []int) ([]int, []int) {
+	msg_out := dividend[:]
+	length := len(dividend) - (len(divisor) - 1)
+	for i := 0; i < length; i++ {
+		coef := msg_out[i]
+		if coef != 0 {
+			for j := 1; j < len(divisor); j++ {
+				if divisor[j] != 0 {
+					msg_out[i+j] ^= Galois_MUL(divisor[j], coef)
+				}
+			}
+		}
+	}
+	separator := -(len(divisor) - 1)
+	if separator >= 0 {
+		return msg_out[:separator], msg_out[separator:]
+	}
+	msg_out_len := len(msg_out)
+	return msg_out[:msg_out_len+separator], msg_out[msg_out_len+separator:]
+}
+
 // 多项式，计算多项式在特定x的值
 func Galois_POLY_EVAL(p []int, x int) int {
 	y := p[0]
@@ -121,15 +141,13 @@ func Galois_Table() {
 		gf_log[x] = i
 		x = Galois_MUL_NO_TABLE(x, 2, 0x11d)
 	}
-	fmt.Println("gf_exp", gf_exp)
-	fmt.Println("gf_log", gf_log)
 }
 
 // 都是通过上述方法执行生成的
-var Galois_GF_EXP_256 = [512]int{
+var Galois_GF_EXP_256 = []int{
 	1, 2, 4, 8, 16, 32, 64, 128, 29, 58, 116, 232, 205, 135, 19, 38, 76, 152, 45, 90, 180, 117, 234, 201, 143, 3, 6, 12, 24, 48, 96, 192, 157, 39, 78, 156, 37, 74, 148, 53, 106, 212, 181, 119, 238, 193, 159, 35, 70, 140, 5, 10, 20, 40, 80, 160, 93, 186, 105, 210, 185, 111, 222, 161, 95, 190, 97, 194, 153, 47, 94, 188, 101, 202, 137, 15, 30, 60, 120, 240, 253, 231, 211, 187, 107, 214, 177, 127, 254, 225, 223, 163, 91, 182, 113, 226, 217, 175, 67, 134, 17, 34, 68, 136, 13, 26, 52, 104, 208, 189, 103, 206, 129, 31, 62, 124, 248, 237, 199, 147, 59, 118, 236, 197, 151, 51, 102, 204, 133, 23, 46, 92, 184, 109, 218, 169, 79, 158, 33, 66, 132, 21, 42, 84, 168, 77, 154, 41, 82, 164, 85, 170, 73, 146, 57, 114, 228, 213, 183, 115, 230, 209, 191, 99, 198, 145, 63, 126, 252, 229, 215, 179, 123, 246, 241, 255, 227, 219, 171, 75, 150, 49, 98, 196, 149, 55, 110, 220, 165, 87, 174, 65, 130, 25, 50, 100, 200, 141, 7, 14, 28, 56, 112, 224, 221, 167, 83, 166, 81, 162, 89, 178, 121, 242, 249, 239, 195, 155, 43, 86, 172, 69, 138, 9, 18, 36, 72, 144, 61, 122, 244, 245, 247, 243, 251, 235, 203, 139, 11, 22, 44, 88, 176, 125, 250, 233, 207, 131, 27, 54, 108, 216, 173, 71, 142, 1,
 }
-var Galois_GF_LOG_256 = [256]int{
+var Galois_GF_LOG_256 = []int{
 	0, 255, 1, 25, 2, 50, 26, 198, 3, 223, 51, 238, 27, 104, 199, 75, 4, 100, 224, 14, 52, 141, 239, 129, 28, 193, 105, 248, 200, 8, 76, 113, 5, 138, 101, 47, 225, 36, 15, 33, 53, 147, 142, 218, 240, 18, 130, 69, 29, 181, 194, 125, 106, 39, 249, 185, 201, 154, 9, 120, 77, 228, 114, 166, 6, 191, 139, 98, 102, 221, 48, 253, 226, 152, 37, 179, 16, 145, 34, 136, 54, 208, 148, 206, 143, 150, 219, 189, 241, 210, 19, 92, 131, 56, 70, 64, 30, 66, 182, 163, 195, 72, 126, 110, 107, 58, 40, 84, 250, 133, 186, 61, 202, 94, 155, 159, 10, 21, 121, 43, 78, 212, 229, 172, 115, 243, 167, 87, 7, 112, 192, 247, 140, 128, 99, 13, 103, 74, 222, 237, 49, 197, 254, 24, 227, 165, 153, 119, 38, 184, 180, 124, 17, 68, 146, 217, 35, 32, 137, 46, 55, 63, 209, 91, 149, 188, 207, 205, 144, 135, 151, 178, 220, 252, 190, 97, 242, 86, 211, 171, 20, 42, 93, 158, 132, 60, 57, 83, 71, 109, 65, 162, 31, 45, 67, 216, 183, 123, 164, 118, 196, 23, 73, 236, 127, 12, 111, 246, 108, 161, 59, 82, 41, 157, 85, 170, 251, 96, 134, 177, 187, 204, 62, 90, 203, 89, 95, 176, 156, 169, 160, 81, 11, 245, 22, 235, 122, 117, 44, 215, 79, 174, 213, 233, 230, 231, 173, 232, 116, 214, 244, 234, 168, 80, 88, 175,
 }
 
@@ -148,7 +166,7 @@ func RS_Calc_Syndromes(msg []int, errCorrectSize int) []int {
 	for i := 0; i < errCorrectSize; i++ {
 		synd[i] = Galois_POLY_EVAL(msg, Galois_POW(2, i))
 	}
-	return synd
+	return ConcatArray([]int{0}, synd)
 }
 
 func RS_Encode(msg []int, errCorrectSize int) []int {
@@ -217,7 +235,6 @@ func RS_Find_Error_Locator(synd []int, nsym int, erase_count int) []int {
 	// 	synd_shift = len(synd) - nsym
 	// }
 	for i := 0; i < nsym-erase_count; i++ {
-		// fmt.Println("xxi", i, nsym, synd, synd_shift)
 		K := i + synd_shift
 		var delta int
 		if K < 0 {
@@ -226,7 +243,6 @@ func RS_Find_Error_Locator(synd []int, nsym int, erase_count int) []int {
 			delta = synd[K]
 		}
 
-		// fmt.Println("delta", i, delta, K, synd)
 		for j := 1; j < len(err_loc); j++ {
 			syncIndex := K - j
 			if syncIndex < 0 {
@@ -256,10 +272,8 @@ func RS_Find_Error_Locator(synd []int, nsym int, erase_count int) []int {
 
 //
 func RS_Find_Errors(err_loc []int, msgLength int) []int {
-	fmt.Println("err_loc", err_loc, msgLength)
 	err_pos := []int{}
 	for i := 0; i < msgLength; i++ {
-		fmt.Println("err_loc", err_loc, Galois_POW(2, i))
 		if Galois_POLY_EVAL(err_loc, Galois_POW(2, i)) == 0 {
 			err_pos = append(err_pos, msgLength-1-i)
 		}
@@ -269,13 +283,11 @@ func RS_Find_Errors(err_loc []int, msgLength int) []int {
 
 // 错误纠正
 func RS_Error_Correct(msg []int, nsym int, erase_pos []int) []int {
-	fmt.Println("msg", msg, nsym)
 	output := msg[:]
 	for _, pos := range erase_pos {
 		output[pos] = 0
 	}
 	synd := RS_Calc_Syndromes(output, nsym)
-	fmt.Println("synd", synd)
 	isAllSyndIsZero := true
 	for _, syndNum := range synd {
 		if syndNum != 0 {
@@ -287,15 +299,61 @@ func RS_Error_Correct(msg []int, nsym int, erase_pos []int) []int {
 		return output
 	}
 	fsynd := RS_Forney_Syndromes(synd, erase_pos, len(output))
-	fmt.Println("fsynd", synd, fsynd)
 	err_loc := RS_Find_Error_Locator(fsynd, nsym, len(erase_pos))
-	err_loc_reverse := make([]int, len(err_loc))
-	for index, item := range err_loc {
-		err_loc_reverse[len(err_loc)-index-1] = item
-	}
+	err_loc_reverse := ReverseArray(err_loc)
 	err_pos := RS_Find_Errors(err_loc_reverse, len(output))
+	allErrPos := ConcatArray(erase_pos, err_pos)
 
-	// output = rs_correct_errata(output, synd, (erase_pos + err_pos))
-	fmt.Println("err_pos", err_pos)
+	output = RS_Correct_Errata(output, synd, allErrPos)
 	return output
+}
+
+func RS_Correct_Errata(msg []int, synd []int, err_pos []int) []int {
+	coef_pos := make([]int, len(err_pos))
+	for index, p := range err_pos {
+		coef_pos[index] = len(msg) - 1 - p
+	}
+	err_loc := RS_Find_Errata_Locator(coef_pos)
+	err_eval := ReverseArray(RS_Find_Error_Evaluator(ReverseArray(synd), err_loc, len(err_loc)-1))
+	X := []int{}
+	for i := 0; i < len(coef_pos); i++ {
+		l := 255 - coef_pos[i]
+		X = append(X, Galois_POW(2, len(Galois_GF_EXP_256)-1-l))
+	}
+	E := make([]int, len(msg))
+	Xlength := len(X)
+	for i, Xi := range X {
+		Xi_inv := Galois_INVERSE(Xi)
+		err_loc_prime_tmp := []int{}
+		for j := 0; j < Xlength; j++ {
+			if j != i {
+				err_loc_prime_tmp = append(err_loc_prime_tmp, Galois_SUB(1, Galois_MUL(Xi_inv, X[j])))
+			}
+		}
+		err_loc_prime := 1
+		for _, coef := range err_loc_prime_tmp {
+			err_loc_prime = Galois_MUL(err_loc_prime, coef)
+		}
+		y := Galois_POLY_EVAL(ReverseArray(err_eval), Xi_inv)
+		y = Galois_MUL(Galois_POW(Xi, 1), y)
+		magnitude := Galois_DIV(y, err_loc_prime)
+		E[err_pos[i]] = magnitude
+	}
+
+	msg = Galois_POLY_ADD(msg, E)
+	return msg
+}
+
+func RS_Find_Error_Evaluator(synd []int, err_loc []int, nsym int) []int {
+	nsymArr := make([]int, nsym+1)
+	_, remainder := Galois_POLY_DIV(Galois_POLY_MUL(synd, err_loc), ConcatArray([]int{0}, nsymArr))
+	return remainder
+}
+
+func RS_Find_Errata_Locator(e_pos []int) []int {
+	e_loc := []int{1}
+	for _, i := range e_pos {
+		e_loc = Galois_POLY_MUL(e_loc, Galois_POLY_ADD([]int{1}, []int{Galois_POW(2, i), 0}))
+	}
+	return e_loc
 }
