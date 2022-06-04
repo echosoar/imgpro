@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -92,11 +93,13 @@ type QRCodeCorner struct {
 }
 
 type QRCodeItem struct {
-	corners []*QRCodeCorner
-	matrix  []float64
-	version int
-	size    int
-	Pixels  []int
+	corners              []*QRCodeCorner
+	matrix               []float64
+	version              int
+	size                 int
+	Pixels               []int
+	errorCorrectionLevel []int
+	mask                 []int
 }
 
 func (qr *QRCode) Run() {
@@ -779,6 +782,7 @@ func (qrItem *QRCodeItem) decode() {
 
 func (qrItem *QRCodeItem) getFormatData() error {
 	format := make([]int, 15)
+	formatMask := []int{1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0}
 	for x := 0; x < 8; x++ {
 		index := 8*qrItem.size + (qrItem.size - x - 1)
 		format[x] = qrItem.Pixels[index]
@@ -787,30 +791,28 @@ func (qrItem *QRCodeItem) getFormatData() error {
 		index := (qrItem.size-7+y)*qrItem.size + 8
 		format[y+8] = qrItem.Pixels[index]
 	}
-	format = method.XOR(method.ReverseArray(format), []int{1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0})
+	format = method.XOR(method.ReverseArray(format), formatMask)
 	formatInt := method.BinaryToInt(format)
 	decodeFormatRes, newFormat := method.BCH_Decode_Format(formatInt)
 	if decodeFormatRes == -1 {
-
+		ys := [15]int{0, 1, 2, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 8, 8}
+		xs := [15]int{8, 8, 8, 8, 8, 8, 8, 8, 7, 5, 4, 3, 2, 1, 0}
+		for i := 0; i < 15; i++ {
+			index := ys[i]*qrItem.size + xs[i]
+			format[i] = qrItem.Pixels[index]
+		}
+		format = method.XOR(method.ReverseArray(format), formatMask)
+		formatInt := method.BinaryToInt(format)
+		decodeFormatRes, newFormat2 := method.BCH_Decode_Format(formatInt)
+		if decodeFormatRes == -1 {
+			return errors.New("get format info error")
+		}
+		newFormat = newFormat2
 	}
 	format = method.IntToBinary(newFormat, 15)
 
-	// if err != nil {
-	// 	xs := [15]int{8, 8, 8, 8, 8, 8, 8, 8, 7, 5, 4, 3, 2, 1, 0}
-	// 	ys := [15]int{0, 1, 2, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 8, 8}
-	// 	for i := 14; i >= 0; i-- {
-	// 		index := ys[i]*qrItem.size + xs[i]
-	// 		format[14-i] = qrItem.Pixels[index]
-	// 	}
-
-	// 	format, err = method.RS_Error_Correct(format, 10, []int{})
-	// 	fmt.Println("format2", format, err)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-
-	fmt.Println("format", format)
-
+	qrItem.errorCorrectionLevel = format[0:2]
+	qrItem.mask = format[2:5]
+	fmt.Println("qrItem", qrItem.errorCorrectionLevel, qrItem.mask)
 	return nil
 }
