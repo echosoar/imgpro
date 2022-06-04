@@ -554,7 +554,7 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	matrix := method.PerspectiveMap(&posies, float64(qrCodeItem.size)-float64(qrCornerSize), float64(qrCodeItem.size)-float64(qrCornerSize))
 	qrCodeItem.matrix = matrix
 	qr.autoAdjustmentMatrix(qrCodeItem, &matrix)
-	qrCodeItem.decode()
+
 	rgba := make([]img.RGBA, qrCodeItem.size*qrCodeItem.size)
 	// 获取图像透视像素点
 	for line := 0; line < qrCodeItem.size; line++ {
@@ -574,6 +574,7 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 			}
 		}
 	}
+	qrCodeItem.decode()
 	method.OutputToImg("./ignore_target.jpg", qrCodeItem.size, qrCodeItem.size, rgba)
 }
 
@@ -766,18 +767,7 @@ func (qr *QRCode) scoreArea(qrItem *QRCodeItem, matrix *[]float64, fromX, fromY,
 }
 
 func (qrItem *QRCodeItem) decode() {
-	totalLen := 20
-	str := []int{'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}
-	errCorrect := totalLen - len(str)
-	fmt.Println("origin str", str)
-	code := method.RS_Encode(str, errCorrect)
-	fmt.Println("encode", code)
-	code[0] = 0
-	code[1] = 0
-	code[13] = 0
-	code[14] = 0
-	correct := method.RS_Error_Correct(code, errCorrect, []int{})
-	fmt.Println("res2", correct)
+	qrItem.getFormatData()
 	// https://www.jianshu.com/p/3cf1862552f8
 	// 获取5个数据位10个纠错位，根据纠错信息获取到原始数据
 	// 去掉掩码,即从格式信息中得到编码区的摆位图进行异或处理消除掩码
@@ -785,4 +775,42 @@ func (qrItem *QRCodeItem) decode() {
 	// 恢复数据码字和纠错码字
 	// 使用纠错码字进行错误检查,并纠错
 	// 解码数据码字
+}
+
+func (qrItem *QRCodeItem) getFormatData() error {
+	format := make([]int, 15)
+	for x := 0; x < 8; x++ {
+		index := 8*qrItem.size + (qrItem.size - x - 1)
+		format[x] = qrItem.Pixels[index]
+	}
+	for y := 0; y < 7; y++ {
+		index := (qrItem.size-7+y)*qrItem.size + 8
+		format[y+8] = qrItem.Pixels[index]
+	}
+	format = method.XOR(method.ReverseArray(format), []int{1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0})
+	formatInt := method.BinaryToInt(format)
+	decodeFormatRes, newFormat := method.BCH_Decode_Format(formatInt)
+	if decodeFormatRes == -1 {
+
+	}
+	format = method.IntToBinary(newFormat, 15)
+
+	// if err != nil {
+	// 	xs := [15]int{8, 8, 8, 8, 8, 8, 8, 8, 7, 5, 4, 3, 2, 1, 0}
+	// 	ys := [15]int{0, 1, 2, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 8, 8}
+	// 	for i := 14; i >= 0; i-- {
+	// 		index := ys[i]*qrItem.size + xs[i]
+	// 		format[14-i] = qrItem.Pixels[index]
+	// 	}
+
+	// 	format, err = method.RS_Error_Correct(format, 10, []int{})
+	// 	fmt.Println("format2", format, err)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+
+	fmt.Println("format", format)
+
+	return nil
 }

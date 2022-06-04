@@ -2,6 +2,7 @@ package method
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/echosoar/imgpro/core"
 )
@@ -48,4 +49,56 @@ func LineIntesect(lineA LineInfo, lineB LineInfo) (bool, core.ValuePosition) {
 		y = lineA.K*x + lineA.B
 	}
 	return true, core.ValuePosition{X: int(x), Y: int(y)}
+}
+
+func CheckAllIsNum(list []int, num int) bool {
+	for _, item := range list {
+		if item != num {
+			return false
+		}
+	}
+	return true
+}
+
+func XOR(list []int, list2 []int) []int {
+	length := len(list)
+	if len(list2) > length {
+		length = len(list2)
+	}
+	result := make([]int, length)
+	for i := 0; i < length; i++ {
+		a := 0
+		b := 0
+		if i < len(list) {
+			a = list[i]
+		}
+		if i < len(list2) {
+			b = list2[i]
+		}
+		result[i] = a ^ b
+	}
+	return result
+}
+
+func BinaryToInt(list []int) int {
+	num := 0
+	for i, value := range list {
+		if value != 0 {
+			num += int(math.Pow(2, float64(len(list)-1-i)))
+		}
+
+	}
+	return num
+}
+
+func IntToBinary(num int, minLength int) []int {
+	list := []int{}
+	for num > 0 {
+		list = append(list, num%2)
+		num /= 2
+	}
+	for i := len(list); i < minLength; i ++ {
+		list = append(list, 0)
+	}
+	return ReverseArray(list)
 }
