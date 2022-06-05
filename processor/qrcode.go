@@ -769,15 +769,16 @@ func (qr *QRCode) scoreArea(qrItem *QRCodeItem, matrix *[]float64, fromX, fromY,
 	return score
 }
 
-func (qrItem *QRCodeItem) decode() {
-	qrItem.getFormatData()
+func (qrItem *QRCodeItem) decode() error {
+	// 获取格式信息
+	err := qrItem.getFormatData()
+	if err != nil {
+		return err
+	}
 	// https://www.jianshu.com/p/3cf1862552f8
-	// 获取5个数据位10个纠错位，根据纠错信息获取到原始数据
-	// 去掉掩码,即从格式信息中得到编码区的摆位图进行异或处理消除掩码
 
-	// 恢复数据码字和纠错码字
-	// 使用纠错码字进行错误检查,并纠错
-	// 解码数据码字
+	qrItem.readData()
+	return nil
 }
 
 func (qrItem *QRCodeItem) getFormatData() error {
@@ -814,5 +815,112 @@ func (qrItem *QRCodeItem) getFormatData() error {
 	qrItem.errorCorrectionLevel = format[0:2]
 	qrItem.mask = format[2:5]
 	fmt.Println("qrItem", qrItem.errorCorrectionLevel, qrItem.mask)
+	return nil
+}
+
+func (qrItem *QRCodeItem) readData() error {
+	// 从右向左，从低向上
+	y := qrItem.size - 1
+	x := qrItem.size - 1
+	step := -1
+	for x > 0 {
+		if x == 6 {
+			x--
+		}
+
+		xs := []int{x, x - 1}
+		for _, xItem := range xs {
+			if qrItem.checkNotIsData(xItem, y) {
+				continue
+			}
+			qrItem.readBit(xItem, y)
+		}
+		y += step
+		if y < 0 || y >= qrItem.size {
+			step = -step
+			x -= 2
+			y += step
+		}
+	}
+	return nil
+}
+
+type QRDataInfo struct {
+	alignmentPatterns []int
+}
+
+var QRAlignmentPatterns = []QRDataInfo{
+	{},
+	{alignmentPatterns: []int{}},
+	{alignmentPatterns: []int{6, 18}},
+	{alignmentPatterns: []int{6, 22}},
+	{alignmentPatterns: []int{6, 26}},
+	{alignmentPatterns: []int{6, 30}},
+	{alignmentPatterns: []int{6, 34}},
+	{alignmentPatterns: []int{6, 22, 38}},
+	{alignmentPatterns: []int{6, 24, 42}},
+	{alignmentPatterns: []int{6, 26, 46}},
+	{alignmentPatterns: []int{6, 28, 50}},
+	{alignmentPatterns: []int{6, 30, 54}},
+	{alignmentPatterns: []int{6, 32, 58}},
+	{alignmentPatterns: []int{6, 34, 62}},
+	{alignmentPatterns: []int{6, 26, 46, 66}},
+	{alignmentPatterns: []int{6, 26, 48, 70}},
+	{alignmentPatterns: []int{6, 26, 50, 74}},
+	{alignmentPatterns: []int{6, 30, 54, 78}},
+	{alignmentPatterns: []int{6, 30, 56, 82}},
+	{alignmentPatterns: []int{6, 30, 58, 86}},
+	{alignmentPatterns: []int{6, 34, 62, 90}},
+	{alignmentPatterns: []int{6, 28, 50, 72, 94}},
+	{alignmentPatterns: []int{6, 26, 50, 74, 98}},
+	{alignmentPatterns: []int{6, 30, 54, 78, 102}},
+	{alignmentPatterns: []int{6, 28, 54, 80, 106}},
+	{alignmentPatterns: []int{6, 32, 58, 84, 110}},
+	{alignmentPatterns: []int{6, 30, 58, 86, 114}},
+	{alignmentPatterns: []int{6, 34, 62, 90, 118}},
+	{alignmentPatterns: []int{6, 26, 50, 74, 98, 122}},
+	{alignmentPatterns: []int{6, 30, 54, 78, 102, 126}},
+	{alignmentPatterns: []int{6, 26, 52, 78, 104, 130}},
+	{alignmentPatterns: []int{6, 30, 56, 82, 108, 134}},
+	{alignmentPatterns: []int{6, 34, 60, 86, 112, 138}},
+	{alignmentPatterns: []int{6, 30, 58, 86, 114, 142}},
+	{alignmentPatterns: []int{6, 34, 62, 90, 118, 146}},
+	{alignmentPatterns: []int{6, 30, 54, 78, 102, 126, 150}},
+	{alignmentPatterns: []int{6, 24, 50, 76, 102, 128, 154}},
+	{alignmentPatterns: []int{6, 28, 54, 80, 106, 132, 158}},
+	{alignmentPatterns: []int{6, 32, 58, 84, 110, 136, 162}},
+	{alignmentPatterns: []int{6, 26, 54, 82, 110, 138, 166}},
+	{alignmentPatterns: []int{6, 30, 58, 86, 114, 142, 170}},
+}
+
+// 检测是否不是数据块
+func (qrItem *QRCodeItem) checkNotIsData(x, y int) bool {
+	finderSize := 9
+
+	if x == 6 || y == 6 {
+		return true
+	}
+
+	// 三个角的定位点
+	if x < finderSize && y < finderSize || x > qrItem.size-finderSize && y < finderSize || x < finderSize && y > qrItem.size-finderSize {
+		return true
+	}
+	// 版本信息
+	if qrItem.version >= 7 {
+		if x < 6 && y > qrItem.size-finderSize-3 {
+			return true
+		}
+
+		if x > qrItem.size-finderSize-3 && y < 6 {
+			return true
+		}
+	}
+
+	// Alignment Patterns
+
+	return false
+}
+
+func (qrItem *QRCodeItem) readBit(x, y int) error {
 	return nil
 }
