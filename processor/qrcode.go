@@ -801,70 +801,6 @@ func (qrItem *QRCodeItem) getFormatData() error {
 	return nil
 }
 
-func (qrItem *QRCodeItem) readData() error {
-	rgba := make([]img.RGBA, qrItem.size*qrItem.size)
-	fmt.Println("qrItem.size", qrItem.size)
-	// 从右向左，从低向上
-	y := qrItem.size - 1
-	x := qrItem.size - 1
-	step := -1
-	pixelCount := 0
-	parts := make([][]int, 0)
-	for x > 0 {
-		if x == 6 {
-			x--
-		}
-
-		xs := []int{x, x - 1}
-		for _, xItem := range xs {
-			pixelIndex := y*qrItem.size + xItem
-			if qrItem.checkNotIsData(xItem, y) {
-				rgba[pixelIndex] = img.RGBA{R: 255, G: 0, B: 0, A: 255}
-				continue
-			}
-			partIndex := pixelCount / 8
-			if partIndex%2 == 0 {
-				rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
-			} else {
-				rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
-			}
-			pixelCount++
-			bit := qrItem.Pixels[pixelIndex]
-			if qrItem.dataMask(x, y) > 0 {
-				bit ^= 1
-			}
-			if len(parts) == partIndex {
-				parts = append(parts, []int{})
-			}
-			parts[partIndex] = append(parts[partIndex], bit)
-		}
-		y += step
-		if y < 0 || y >= qrItem.size {
-			step = -step
-			x -= 2
-			y += step
-		}
-	}
-
-	eccInfo := qrEccList[qrItem.version]
-	errLevel := 0
-	switch qrItem.errorCorrectionLevel {
-	case 1:
-		errLevel = 0
-	case 0:
-		errLevel = 1
-	case 3:
-		errLevel = 2
-	case 2:
-		errLevel = 3
-	}
-	eccItem := eccInfo[errLevel]
-	fmt.Println("parts", eccItem)
-
-	method.OutputToImg("./ignore_target.jpg", qrItem.size, qrItem.size, rgba)
-	return nil
-}
-
 type QRDataInfo struct {
 	alignmentPatterns []int
 }
@@ -1164,6 +1100,104 @@ var qrEccList = [][]QRDataECC{
 		{2334, 28, 18, 47, 31, 48},
 		{1666, 30, 34, 24, 34, 25},
 	},
+}
+
+func (qrItem *QRCodeItem) readData() error {
+	rgba := make([]img.RGBA, qrItem.size*qrItem.size)
+	fmt.Println("qrItem.size", qrItem.size)
+	// 从右向左，从低向上
+	y := qrItem.size - 1
+	x := qrItem.size - 1
+	step := -1
+	pixelCount := 0
+	eccInfo := qrEccList[qrItem.version]
+	errLevel := 0
+	switch qrItem.errorCorrectionLevel {
+	case 1:
+		errLevel = 0
+	case 0:
+		errLevel = 1
+	case 3:
+		errLevel = 2
+	case 2:
+		errLevel = 3
+	}
+	eccItem := eccInfo[errLevel]
+	parts := make([][]int, eccItem.tdc+eccItem.ecc*(eccItem.blocks1+eccItem.blocks2))
+foreachPixel:
+	for x > 0 {
+		if x == 6 {
+			x--
+		}
+
+		xs := []int{x, x - 1}
+		for _, xItem := range xs {
+			pixelIndex := y*qrItem.size + xItem
+			if qrItem.checkNotIsData(xItem, y) {
+				rgba[pixelIndex] = img.RGBA{R: 255, G: 0, B: 0, A: 255}
+				continue
+			}
+			partIndex := pixelCount / 8
+			if partIndex%2 == 0 {
+				rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
+			} else {
+				rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
+			}
+			pixelCount++
+			bit := qrItem.Pixels[pixelIndex]
+			if qrItem.dataMask(xItem, y) > 0 {
+				bit ^= 1
+			}
+			if partIndex >= len(parts) {
+				break foreachPixel
+			}
+			parts[partIndex] = append(parts[partIndex], bit)
+		}
+		y += step
+		if y < 0 || y >= qrItem.size {
+			step = -step
+			x -= 2
+			y += step
+		}
+	}
+
+	allBlocks := eccItem.blocks1 + eccItem.blocks2
+	blocksData := make([]int, 0)
+	for blockIndex := 0; blockIndex < allBlocks; blockIndex++ {
+		dc := eccItem.dc1
+		if blockIndex >= eccItem.blocks1 {
+			dc = eccItem.dc2
+		}
+		blockLength := dc + eccItem.ecc
+		blockData := make([]int, blockLength)
+
+		for bitIndex := 0; bitIndex < dc; bitIndex++ {
+			// 因为是多个 block 横向排列，然后纵向读取之后再放入数据中的
+			valueInBitIndex := blockIndex + bitIndex*allBlocks
+			blockData[bitIndex] = method.BinaryToInt(parts[valueInBitIndex])
+		}
+
+		for eccBitIndex := 0; eccBitIndex < eccItem.ecc; eccBitIndex++ {
+			// 因为是多个 block 横向排列，然后纵向读取之后再放入数据中的
+			eccInBitIndex := eccItem.tdc + blockIndex + eccBitIndex*allBlocks
+			blockData[dc+eccBitIndex] = method.BinaryToInt(parts[eccInBitIndex])
+		}
+		res, err := method.RS_Error_Correct(blockData, eccItem.ecc, []int{}, method.Galois_GF_256)
+		if err != nil {
+			return err
+		}
+		dataRes := res[:dc]
+		dataBit := make([]int, 0)
+		for _, number := range dataRes {
+			// 再转换回二进制
+			dataBit = method.ConcatArray(dataBit, method.IntToBinary(number, 8))
+		}
+		blocksData = method.ConcatArray(blocksData, dataBit)
+	}
+	fmt.Println("blocksData", blocksData)
+
+	method.OutputToImg("./ignore_target.jpg", qrItem.size, qrItem.size, rgba)
+	return nil
 }
 
 // 检测是否不是数据块

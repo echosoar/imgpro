@@ -8,7 +8,7 @@ import (
 )
 
 func TestQRCodeJpg(t *testing.T) {
-	result := Run("./imgs/qrcode/1.png", []string{"qrcode"})
+	result := Run("./imgs/qrcode/123.png", []string{"qrcode"})
 
 	if result["qrcode"].Int < 100 {
 		jsonData, _ := json.Marshal(result)
