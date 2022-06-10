@@ -49,18 +49,21 @@ func hueExec(rgbaList []img.RGBA) []img.RGBA {
 }
 
 func hueRunner(core *img.Core) map[string]img.Value {
-	rgba := core.Result["rgba"].Rgba
+	rgba := core.Result["rgba"].Frames
 
 	frame := core.Result["frame"].Int
-	var hueResult [][]img.RGBA
+	var hueFrames []img.Value
 	for frameIndex := 0; frameIndex < frame; frameIndex++ {
-		hueResult = append(hueResult, hueExec(rgba[frameIndex]))
+		hueFrames = append(hueFrames, img.Value{
+			Type: img.ValueTypeRGBA,
+			Rgba: hueExec(rgba[frameIndex].Rgba),
+		})
 	}
 
 	return map[string]img.Value{
 		"hue": {
-			Type: img.ValueTypeRGBA,
-			Rgba: hueResult,
+			Type:   img.ValueTypeFrames,
+			Frames: hueFrames,
 		},
 	}
 }

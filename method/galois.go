@@ -2,7 +2,6 @@ package method
 
 import (
 	"errors"
-	"fmt"
 )
 
 // 伽罗瓦域计算
@@ -57,7 +56,6 @@ func Galois_DIV(x, y int, table Galois_GF) int {
 // 幂，使用速查表
 func Galois_POW(x, power int, table Galois_GF) int {
 	index := (table.log[x] * power) % table.maxIndex
-	// fmt.Println("pow", index, x, power, table.log[x]*power)
 	if index < 0 {
 		index += table.maxIndex
 	}
@@ -322,7 +320,6 @@ func RS_Error_Correct(msg []int, nsym int, erase_pos []int, table Galois_GF) ([]
 		output[pos] = 0
 	}
 	synd := RS_Calc_Syndromes(output, nsym, table)
-	fmt.Println("synd", msg, synd)
 	// 没有错误
 	if CheckAllIsNum(synd, 0) {
 		return output, nil
@@ -335,15 +332,12 @@ func RS_Error_Correct(msg []int, nsym int, erase_pos []int, table Galois_GF) ([]
 		return msg, errors.New("Could not locate error")
 	}
 	allErrPos := ConcatArray(erase_pos, err_pos)
-	fmt.Println("output", synd, output, err_pos)
 	output, err = RS_Correct_Errata(output, synd, allErrPos, table)
-	fmt.Println("output2", output)
 	if err != nil {
 		return msg, err
 	}
 	synd = RS_Calc_Syndromes(output, nsym, table)
 	if !CheckAllIsNum(synd, 0) {
-		fmt.Println("synd", synd, output)
 		return msg, errors.New("Could not correct message")
 	}
 	return output, nil
@@ -426,7 +420,7 @@ func BCH_Decode_Format(format int) (int, int) {
 		test_code := (test_fmt << 10) ^ BCH_Check_Format(test_fmt<<10)
 		test_dist := BCH_Hamming_Weight(format ^ test_code)
 		if test_dist < best_dist {
-			bestCode =  test_code
+			bestCode = test_code
 			best_dist = test_dist
 			best_fmt = test_fmt
 		} else if test_dist == best_dist {

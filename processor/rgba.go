@@ -22,7 +22,7 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 	width := core.Result["width"].Int
 	height := core.Result["height"].Int
 	frame := 0
-	rgba := [][]img.RGBA{}
+	frameRGBAs := []img.Value{}
 
 	if imgType == "png" || imgType == "jpg" {
 		frame = 1
@@ -42,7 +42,10 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 				})
 			}
 		}
-		rgba = append(rgba, rgbaFrame)
+		frameRGBAs = append(frameRGBAs, img.Value{
+			Type: img.ValueTypeRGBA,
+			Rgba: rgbaFrame,
+		})
 	} else if imgType == "gif" {
 
 	}
@@ -53,8 +56,8 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 			Int:  frame,
 		},
 		"rgba": {
-			Type: img.ValueTypeRGBA,
-			Rgba: rgba,
+			Type:   img.ValueTypeFrames,
+			Frames: frameRGBAs,
 		},
 	}
 }

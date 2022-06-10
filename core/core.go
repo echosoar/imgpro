@@ -29,10 +29,11 @@ type Value struct {
 	Int    int
 	String string
 	Bytes  []byte
-	Rgba   [][]RGBA
+	Rgba   []RGBA
 	Rect   []ValuePosition
 	Values map[string]Value
 	List   []Value
+	Frames []Value
 }
 
 type ValuePosition struct {
@@ -66,6 +67,8 @@ const (
 	ValueTypeList ValueType = 5
 	// ValueTypeRect []ValuePosition
 	ValueTypeRect ValueType = 6
+	// ValueTypeFrame []ValueP
+	ValueTypeFrames ValueType = 7
 )
 
 // Processor 处理器

@@ -16,6 +16,7 @@
   <input type="checkbox" class="feature" value="exif" checked> exif  
   <input type="checkbox" class="feature" value="device" checked> device 
   <input type="checkbox" class="feature" value="position" checked> gps position 
+  <input type="checkbox" class="feature" value="qrcode" checked> qrcode
 </div>
 <hr />
 <div>
@@ -47,22 +48,31 @@ function formatResult(result) {
   const data = {};
   Object.keys(result).forEach(key => {
     const valueInfo = result[key];
-    switch (valueInfo.Type) {
-      case 0:
-        data[key] = valueInfo.Int;
-        break;
-      case 1:
-        data[key] = valueInfo.String;
-        break;
-      case 3:
-        data[key] = valueInfo.Rgba;
-        break;
-      case 4:
-        data[key] = formatResult(valueInfo.Values);
-        break;
-    }
+    data[key] = formatValue(valueInfo);
   });
   return data;
+}
+
+function formatValue(valueInfo) {
+  switch (valueInfo.Type) {
+      case 0:
+        return valueInfo.Int;
+      case 1:
+        return valueInfo.String;
+      case 3:
+        return valueInfo.Rgba;
+      case 4:
+        let obj = {};
+        Object.keys(valueInfo.Values).forEach(key => {
+          obj[key] = formatValue(valueInfo.Values[key])
+        })
+        return obj;
+      case 5:
+        return valueInfo.List.map(item => formatValue)
+      case 7:
+        return valueInfo.Frames.map(item => formatValue)
+    }
+    return valueInfo;
 }
 
 </script>

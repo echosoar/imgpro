@@ -1,7 +1,6 @@
 package method
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/echosoar/imgpro/core"
@@ -26,7 +25,6 @@ func PointsToLine(pointA core.ValuePosition, pointB core.ValuePosition) LineInfo
 
 // 两条线段是否有交点，以及交点位置
 func LineIntesect(lineA LineInfo, lineB LineInfo) (bool, core.ValuePosition) {
-	fmt.Println("lineA", lineA, lineB)
 	if lineA.IsX && lineB.IsX {
 		return false, core.ValuePosition{}
 	}
@@ -97,8 +95,27 @@ func IntToBinary(num int, minLength int) []int {
 		list = append(list, num%2)
 		num /= 2
 	}
-	for i := len(list); i < minLength; i ++ {
+	for i := len(list); i < minLength; i++ {
 		list = append(list, 0)
 	}
 	return ReverseArray(list)
+}
+
+// 123 => [1,2,3]
+func IntToIntList(num int) []int {
+	list := []int{}
+	for num > 10 {
+		list = append(list, num%10)
+		num /= 10
+	}
+	list = append(list, num)
+	return ReverseArray(list)
+}
+
+func IntListToInt(numList []int) int {
+	num := 0
+	for i, item := range numList {
+		num += item * int(math.Pow10(len(numList)-1-i))
+	}
+	return num
 }
