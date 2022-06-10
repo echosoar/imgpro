@@ -2,6 +2,7 @@ package processor
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"sort"
 
@@ -473,6 +474,10 @@ func (qr *QRCode) findCorners() {
 			if rowGreyPixels[row] > 0 {
 				color = 1
 			}
+			// 避免定位点在最边上的情况
+			if row == qr.Width-1 {
+				color = 0
+			}
 
 			if row > 0 && color != lastColor {
 				for i := 0; i < 4; i++ {
@@ -487,7 +492,6 @@ func (qr *QRCode) findCorners() {
 					var avg, err int
 					ok := true
 					avg = (pb[0] + pb[1] + pb[3] + pb[4]) / 4
-
 					err = avg * 3 / 4
 
 					for i := 0; i < 5; i++ {
@@ -1093,7 +1097,6 @@ func (qrItem *QRCodeItem) getFormatData() error {
 }
 
 func (qrItem *QRCodeItem) readData() error {
-	rgba := make([]img.RGBA, qrItem.size*qrItem.size)
 	// 从右向左，从低向上
 	y := qrItem.size - 1
 	x := qrItem.size - 1
@@ -1123,22 +1126,16 @@ foreachPixel:
 		for _, xItem := range xs {
 			pixelIndex := y*qrItem.size + xItem
 			if qrItem.checkNotIsData(xItem, y) {
-				rgba[pixelIndex] = img.RGBA{R: 255, G: 0, B: 0, A: 255}
 				continue
 			}
 			partIndex := pixelCount / 8
-			if partIndex%2 == 0 {
-				rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
-			} else {
-				rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
+			if partIndex >= len(parts) {
+				break foreachPixel
 			}
 			pixelCount++
 			bit := qrItem.Pixels[pixelIndex]
 			if qrItem.dataMask(xItem, y) > 0 {
 				bit ^= 1
-			}
-			if partIndex >= len(parts) {
-				break foreachPixel
 			}
 			parts[partIndex] = append(parts[partIndex], bit)
 		}
@@ -1186,7 +1183,7 @@ foreachPixel:
 
 	qrItem.blocksData = blocksData
 	dataType := method.BinaryToInt(blocksData[:4])
-	method.OutputToImg("./ignore_target.jpg", qrItem.size, qrItem.size, rgba)
+	fmt.Println("dataType", dataType)
 	switch dataType {
 	case qrDataTypeNumric:
 		return qrItem.readNumricData()
@@ -1234,7 +1231,7 @@ func (qrItem *QRCodeItem) checkNotIsData(x, y int) bool {
 }
 
 // 数据掩码
-func (qrItem *QRCodeItem) dataMask(i, j int) int {
+func (qrItem *QRCodeItem) dataMask(j, i int) int {
 	k := 0
 	switch qrItem.mask {
 	case 0:
@@ -1318,6 +1315,10 @@ func (qrItem *QRCodeItem) read8BitByteData() error {
 	end := method.BinaryToInt(qrItem.blocksData[dataStartIndex : dataStartIndex+4])
 	if end != 0 {
 		return errors.New("no end identifier")
+	}
+	// UTF-8BOM 头
+	if result[0] == byte(239) && result[1] == byte(187) && result[2] == byte(191) {
+		result = result[3:]
 	}
 	qrItem.success = true
 	qrItem.result = img.Value{
