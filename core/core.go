@@ -29,8 +29,16 @@ type Value struct {
 	Int    int
 	String string
 	Bytes  []byte
-	Rgba   [][]RGBA
+	Rgba   []RGBA
+	Rect   []ValuePosition
 	Values map[string]Value
+	List   []Value
+	Frames []Value
+}
+
+type ValuePosition struct {
+	X int
+	Y int
 }
 
 // RGBA 值
@@ -55,6 +63,12 @@ const (
 	ValueTypeRGBA ValueType = 3
 	// ValueTypeMap map[key] ValueType
 	ValueTypeMap ValueType = 4
+	// ValueTypeList []value
+	ValueTypeList ValueType = 5
+	// ValueTypeRect []ValuePosition
+	ValueTypeRect ValueType = 6
+	// ValueTypeFrame []ValueP
+	ValueTypeFrames ValueType = 7
 )
 
 // Processor 处理器
@@ -144,18 +158,5 @@ func New(features []string) *Core {
 		features:      features,
 		originFeature: features,
 		processorMap:  make(map[string]*Processor),
-	}
-}
-
-func IterateRGBA(point RGBA) []int {
-	return []int{point.R, point.G, point.B, point.A}
-}
-
-func ColorListToRGBA(colorList []int) RGBA {
-	return RGBA{
-		colorList[0],
-		colorList[1],
-		colorList[2],
-		colorList[3],
 	}
 }
