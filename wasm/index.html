@@ -68,9 +68,9 @@ function formatValue(valueInfo) {
         })
         return obj;
       case 5:
-        return valueInfo.List.map(item => formatValue)
+        return valueInfo.List.map(formatValue)
       case 7:
-        return valueInfo.Frames.map(item => formatValue)
+        return valueInfo.Frames.map(formatValue)
     }
     return valueInfo;
 }
