@@ -57,11 +57,7 @@ func ReverseArray(arr []int) []int {
 
 func ConcatArray(arr1 []int, arr2 []int) []int {
 	all := []int{}
-	for _, item := range arr1 {
-		all = append(all, item)
-	}
-	for _, item := range arr2 {
-		all = append(all, item)
-	}
+	all = append(all, arr1...)
+	all = append(all, arr2...)
 	return all
 }

@@ -42,8 +42,24 @@ func TestQRCodeCN(t *testing.T) {
 	}
 }
 
-func TestQRCodeTest(t *testing.T) {
-	result := Run("./imgs/qrcode/test.png", []string{"qrcode"})
+func TestQRCodeTest001(t *testing.T) {
+	result := Run("./imgs/qrcode/001.jpg", []string{"qrcode"})
+	if result["qrcode"].Frames[0].List[0].Values["value"].String != "imgpro" {
+		jsonData, _ := json.Marshal(result)
+		t.Fatal("qrcode cnen err", string(jsonData))
+	}
+}
+
+// func TestQRCodeTest002(t *testing.T) {
+// 	result := Run("./imgs/qrcode/002.jpg", []string{"qrcode"})
+// 	if result["qrcode"].Frames[0].List[0].Values["value"].String != "imgpro" {
+// 		jsonData, _ := json.Marshal(result)
+// 		t.Fatal("qrcode cnen err", string(jsonData))
+// 	}
+// }
+
+func TestQRCodeTest003(t *testing.T) {
+	result := Run("./imgs/qrcode/003.png", []string{"qrcode"})
 	if result["qrcode"].Frames[0].List[0].Values["value"].String != "http://qm.qq.com/cgi-bin/qm/qr?k=LXqWJrE69ShewYXMOyls0HbEWpzaWoee" {
 		jsonData, _ := json.Marshal(result)
 		t.Fatal("qrcode cnen err", string(jsonData))

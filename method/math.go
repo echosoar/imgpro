@@ -14,12 +14,12 @@ type LineInfo struct {
 }
 
 // 两点求线段，返回 k 和 b 以及是否为横线（即 y = kx + b） 或 x = num
-func PointsToLine(pointA core.ValuePosition, pointB core.ValuePosition) LineInfo {
-	if pointA.X == pointB.X {
-		return LineInfo{0.0, 0.0, true, float64(pointA.X)}
+func PointsToLine(aX, aY, bX, bY float64) LineInfo {
+	if aX == bX {
+		return LineInfo{0.0, 0.0, true, aX}
 	}
-	k := float64(pointB.Y-pointA.Y) / float64(pointB.X-pointA.X)
-	b := float64(pointA.Y) - k*float64(pointA.X)
+	k := (bY - aY) / (bX - aX)
+	b := aY - k*(aX)
 	return LineInfo{k, b, false, 0.0}
 }
 
@@ -118,4 +118,38 @@ func IntListToInt(numList []int) int {
 		num += item * int(math.Pow10(len(numList)-1-i))
 	}
 	return num
+}
+
+func Permutations(list []int, m int) [][]int {
+	permutations := [][]int{}
+	for index, value := range list {
+		others := []int{}
+		for index2, value2 := range list {
+			if index2 <= index {
+				continue
+			}
+			others = append(others, value2)
+		}
+		values := [][]int{}
+		if m > 0 {
+			child := Permutations(others, m-1)
+			for _, childItems := range child {
+				values = append(values, ConcatArray([]int{value}, childItems))
+			}
+		} else {
+			values = [][]int{
+				{value},
+			}
+		}
+		permutations = append(permutations, values...)
+	}
+	return permutations
+}
+
+func AllPermutations(list []int) [][]int {
+	allPermutations := [][]int{}
+	for index := range list {
+		allPermutations = append(allPermutations, Permutations(list, index)...)
+	}
+	return allPermutations
 }
