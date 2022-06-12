@@ -14,12 +14,12 @@ type LineInfo struct {
 }
 
 // 两点求线段，返回 k 和 b 以及是否为横线（即 y = kx + b） 或 x = num
-func PointsToLine(pointA core.ValuePosition, pointB core.ValuePosition) LineInfo {
-	if pointA.X == pointB.X {
-		return LineInfo{0.0, 0.0, true, float64(pointA.X)}
+func PointsToLine(aX, aY, bX, bY float64) LineInfo {
+	if aX == bX {
+		return LineInfo{0.0, 0.0, true, aX}
 	}
-	k := float64(pointB.Y-pointA.Y) / float64(pointB.X-pointA.X)
-	b := float64(pointA.Y) - k*float64(pointA.X)
+	k := (bY - aY) / (bX - aX)
+	b := aY - k*(aX)
 	return LineInfo{k, b, false, 0.0}
 }
 
