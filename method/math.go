@@ -119,3 +119,37 @@ func IntListToInt(numList []int) int {
 	}
 	return num
 }
+
+func Permutations(list []int, m int) [][]int {
+	permutations := [][]int{}
+	for index, value := range list {
+		others := []int{}
+		for index2, value2 := range list {
+			if index2 <= index {
+				continue
+			}
+			others = append(others, value2)
+		}
+		values := [][]int{}
+		if m > 0 {
+			child := Permutations(others, m-1)
+			for _, childItems := range child {
+				values = append(values, ConcatArray([]int{value}, childItems))
+			}
+		} else {
+			values = [][]int{
+				{value},
+			}
+		}
+		permutations = append(permutations, values...)
+	}
+	return permutations
+}
+
+func AllPermutations(list []int) [][]int {
+	allPermutations := [][]int{}
+	for index := range list {
+		allPermutations = append(allPermutations, Permutations(list, index)...)
+	}
+	return allPermutations
+}
