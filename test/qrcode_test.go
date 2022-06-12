@@ -57,3 +57,11 @@ func TestQRCodeTest001(t *testing.T) {
 // 		t.Fatal("qrcode cnen err", string(jsonData))
 // 	}
 // }
+
+func TestQRCodeTest003(t *testing.T) {
+	result := Run("./imgs/qrcode/003.png", []string{"qrcode"})
+	if result["qrcode"].Frames[0].List[0].Values["value"].String != "http://qm.qq.com/cgi-bin/qm/qr?k=LXqWJrE69ShewYXMOyls0HbEWpzaWoee" {
+		jsonData, _ := json.Marshal(result)
+		t.Fatal("qrcode cnen err", string(jsonData))
+	}
+}
