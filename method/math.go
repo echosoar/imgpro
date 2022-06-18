@@ -2,6 +2,7 @@ package method
 
 import (
 	"math"
+	"strconv"
 
 	"github.com/echosoar/imgpro/core"
 )
@@ -112,12 +113,12 @@ func IntToIntList(num int) []int {
 	return ReverseArray(list)
 }
 
-func IntListToInt(numList []int) int {
-	num := 0
-	for i, item := range numList {
-		num += item * int(math.Pow10(len(numList)-1-i))
+func IntListToString(numList []int) string {
+	str := ""
+	for _, item := range numList {
+		str += strconv.Itoa(item)
 	}
-	return num
+	return str
 }
 
 func Permutations(list []int, m int) [][]int {

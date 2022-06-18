@@ -77,6 +77,7 @@ type QRCodeItem struct {
 	blocksData           []int
 	result               img.Value
 	success              bool
+	currentReadIndex     int
 }
 
 type QRDataInfo struct {
@@ -111,6 +112,7 @@ const (
 )
 
 const (
+	qrDataTypeEnd      = 0
 	qrDataTypeNumric   = 1
 	qrDataType8BitByte = 4
 )
@@ -794,7 +796,6 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 		method.PointsToLine(float64(hCorner.corners[0].X), float64(hCorner.corners[0].Y), float64(hCorner.corners[1].X), float64(hCorner.corners[1].Y)),
 		method.PointsToLine(float64(vCorner.corners[0].X), float64(vCorner.corners[0].Y), float64(vCorner.corners[3].X), float64(vCorner.corners[3].Y)),
 	)
-	fmt.Println("pointInfo", hCorner.corners[0], hCorner.corners[1], vCorner.corners[0], vCorner.corners[3], pointInfo)
 	if !isExistsPoint {
 		return
 	}
@@ -819,12 +820,12 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	matrix := method.PerspectiveMap(&posies, float64(qrCodeItem.size)-float64(qrCornerSize), float64(qrCodeItem.size)-float64(qrCornerSize))
 	qrCodeItem.matrix = matrix
 	qr.autoAdjustmentMatrix(qrCodeItem, &matrix)
-	rgba := make([]img.RGBA, qrCodeItem.size*qrCodeItem.size)
+	// rgba := make([]img.RGBA, qrCodeItem.size*qrCodeItem.size)
 	// 获取图像透视像素点
 	for line := 0; line < qrCodeItem.size; line++ {
 		for row := 0; row < qrCodeItem.size; row++ {
 			pixelIndex := line*qrCodeItem.size + row
-			rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
+			// rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
 			qrCodeItem.Pixels[pixelIndex] = qrPixelWhite
 			// 之所以加0.5是为了获取到像素中心
 			point := method.PerspectiveTransform(&qrCodeItem.matrix, float64(row)+0.5, float64(line)+0.5)
@@ -833,12 +834,12 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 				index := point.Y*qr.Width + point.X
 				if qr.greyPixels[index] != 0 {
 					qrCodeItem.Pixels[pixelIndex] = qrPixelBlack
-					rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
+					// rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
 				}
 			}
 		}
 	}
-	method.OutputToImg("./ignore_perspective.png", qrCodeItem.size, qrCodeItem.size, rgba)
+	// method.OutputToImg("./ignore_perspective.png", qrCodeItem.size, qrCodeItem.size, rgba)
 	qrCodeItem.decode()
 }
 
@@ -853,7 +854,6 @@ func (qr *QRCode) getVersion(qrItem *QRCodeItem) int {
 		xChange := math.Abs(corners[0] - corners[2])
 		yChange := math.Abs(corners[1] - corners[3])
 		lineInfo := method.PointsToLine(corners[0], corners[1], corners[2], corners[3])
-		fmt.Println("lineInfo", lineInfo)
 		calcIndexFun := func(num float64) (int, float64, float64) {
 			return 0, 0.0, 0.0
 		}
@@ -894,13 +894,11 @@ func (qr *QRCode) getVersion(qrItem *QRCodeItem) int {
 				lastColor = qrIsWhite
 			}
 		}
-		fmt.Println("matchedBlackPoint", matchedBlackPoint)
 		if matchedBlackPoint > curMatchedBlackPoint {
 			curMatchedBlackPoint = matchedBlackPoint
 		}
 	}
 
-	fmt.Println("curMatchedBlackPoint", curMatchedBlackPoint)
 	size := (curMatchedBlackPoint)*2 + 13
 
 	version := (size - 15) / 4
@@ -1346,7 +1344,6 @@ func (qrItem *QRCodeItem) getFormatData() error {
 	}
 	format = method.XOR(method.ReverseArray(format), formatMask)
 	formatInt := method.BinaryToInt(format)
-	fmt.Println("formatInt", formatInt)
 	decodeFormatRes, newFormat := method.BCH_Decode_Format(formatInt)
 	if decodeFormatRes == -1 {
 		ys := [15]int{0, 1, 2, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 8, 8}
@@ -1457,16 +1454,29 @@ foreachPixel:
 	}
 
 	qrItem.blocksData = blocksData
-	dataType := method.BinaryToInt(blocksData[:4])
-	fmt.Println("dataType", dataType)
-	switch dataType {
-	case qrDataTypeNumric:
-		return qrItem.readNumricData()
-	case qrDataType8BitByte:
-		return qrItem.read8BitByteData()
-	}
 
-	return errors.New("this data type is not currently supported")
+	var err error
+dataTypeDecode:
+	for qrItem.currentReadIndex < len(qrItem.blocksData)-4 {
+		dataType := method.BinaryToInt(blocksData[qrItem.currentReadIndex : qrItem.currentReadIndex+4])
+		qrItem.currentReadIndex += 4
+		switch dataType {
+		case qrDataTypeEnd:
+			break dataTypeDecode
+		case qrDataTypeNumric:
+			err = qrItem.readNumricData()
+		case qrDataType8BitByte:
+			err = qrItem.read8BitByteData()
+		default:
+			return errors.New("this data type is not currently supported")
+		}
+		if err != nil {
+			return err
+		}
+	}
+	qrItem.success = true
+
+	return nil
 }
 
 // 检测是否不是数据块
@@ -1541,8 +1551,8 @@ func (qrItem *QRCodeItem) readNumricData() error {
 	} else if qrItem.version > 26 {
 		dataLengthBitLen = 14
 	}
-	dataStartIndex := dataLengthBitLen + 4
-	length := method.BinaryToInt(qrItem.blocksData[4:dataStartIndex])
+	dataStartIndex := qrItem.currentReadIndex + dataLengthBitLen
+	length := method.BinaryToInt(qrItem.blocksData[qrItem.currentReadIndex:dataStartIndex])
 	part := length / 3
 	remainder := length % 3
 
@@ -1561,14 +1571,10 @@ func (qrItem *QRCodeItem) readNumricData() error {
 		result = append(result, (method.IntToIntList(data))...)
 		dataStartIndex += 4
 	}
-	end := method.BinaryToInt(qrItem.blocksData[dataStartIndex : dataStartIndex+4])
-	if end != 0 {
-		return errors.New("no end identifier")
-	}
-	qrItem.success = true
+	qrItem.currentReadIndex = dataStartIndex
 	qrItem.result = img.Value{
-		Type: img.ValueTypeInt,
-		Int:  method.IntListToInt(result),
+		Type:   img.ValueTypeString,
+		String: qrItem.result.String + method.IntListToString(result),
 	}
 	return nil
 }
@@ -1578,8 +1584,8 @@ func (qrItem *QRCodeItem) read8BitByteData() error {
 	if qrItem.version >= 10 {
 		dataLengthBitLen = 16
 	}
-	dataStartIndex := dataLengthBitLen + 4
-	length := method.BinaryToInt(qrItem.blocksData[4:dataStartIndex])
+	dataStartIndex := qrItem.currentReadIndex + dataLengthBitLen
+	length := method.BinaryToInt(qrItem.blocksData[qrItem.currentReadIndex:dataStartIndex])
 
 	result := []byte{}
 	for i := 0; i < length; i++ {
@@ -1587,18 +1593,14 @@ func (qrItem *QRCodeItem) read8BitByteData() error {
 		result = append(result, byte(data))
 		dataStartIndex += 8
 	}
-	end := method.BinaryToInt(qrItem.blocksData[dataStartIndex : dataStartIndex+4])
-	if end != 0 {
-		return errors.New("no end identifier")
-	}
+	qrItem.currentReadIndex = dataStartIndex
 	// UTF-8BOM 头
 	if result[0] == byte(239) && result[1] == byte(187) && result[2] == byte(191) {
 		result = result[3:]
 	}
-	qrItem.success = true
 	qrItem.result = img.Value{
 		Type:   img.ValueTypeString,
-		String: string(result),
+		String: qrItem.result.String + string(result),
 	}
 	return nil
 }

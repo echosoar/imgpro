@@ -10,7 +10,7 @@ import (
 func TestQRCodeNumeric(t *testing.T) {
 	result := Run("./imgs/qrcode/1234567.png", []string{"qrcode"})
 
-	if result["qrcode"].Frames[0].List[0].Values["value"].Int != 1234567 {
+	if result["qrcode"].Frames[0].List[0].Values["value"].String != "1234567" {
 		jsonData, _ := json.Marshal(result)
 		t.Fatal("qrcode numeric err", string(jsonData))
 	}
@@ -58,9 +58,17 @@ func TestQRCodeTest001(t *testing.T) {
 // 	}
 // }
 
-func TestQRCodeTest003(t *testing.T) {
-	result := Run("./imgs/qrcode/003.png", []string{"qrcode"})
-	if result["qrcode"].Frames[0].List[0].Values["value"].String != "http://qm.qq.com/cgi-bin/qm/qr?k=LXqWJrE69ShewYXMOyls0HbEWpzaWoee" {
+// func TestQRCodeTest003(t *testing.T) {
+// 	result := Run("./imgs/qrcode/003.png", []string{"qrcode"})
+// 	if result["qrcode"].Frames[0].List[0].Values["value"].String != "http://qm.qq.com/cgi-bin/qm/qr?k=LXqWJrE69ShewYXMOyls0HbEWpzaWoee" {
+// 		jsonData, _ := json.Marshal(result)
+// 		t.Fatal("qrcode cnen err", string(jsonData))
+// 	}
+// }
+
+func TestQRCodeTestAlipay(t *testing.T) {
+	result := Run("./imgs/qrcode/alipay.jpeg", []string{"qrcode"})
+	if result["qrcode"].Frames[0].List[0].Values["value"].String != "https://qr.alipay.com/fkx1204145jqmapfxwzbzfa" {
 		jsonData, _ := json.Marshal(result)
 		t.Fatal("qrcode cnen err", string(jsonData))
 	}
