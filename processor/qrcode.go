@@ -115,6 +115,7 @@ const (
 	qrDataTypeEnd      = 0
 	qrDataTypeNumric   = 1
 	qrDataType8BitByte = 4
+	qrDataTypeECI      = 7
 )
 
 var QRDataInfoList = []QRDataInfo{
@@ -1408,8 +1409,10 @@ foreachPixel:
 			if qrItem.dataMask(xItem, y) > 0 {
 				bit ^= 1
 			}
+
 			parts[partIndex] = append(parts[partIndex], bit)
 		}
+
 		y += step
 		if y < 0 || y >= qrItem.size {
 			step = -step
@@ -1420,7 +1423,9 @@ foreachPixel:
 
 	allBlocks := eccItem.blocks1 + eccItem.blocks2
 	blocksData := make([]int, 0)
+
 	for blockIndex := 0; blockIndex < allBlocks; blockIndex++ {
+
 		dc := eccItem.dc1
 		if blockIndex >= eccItem.blocks1 {
 			dc = eccItem.dc2
@@ -1459,6 +1464,7 @@ foreachPixel:
 dataTypeDecode:
 	for qrItem.currentReadIndex < len(qrItem.blocksData)-4 {
 		dataType := method.BinaryToInt(blocksData[qrItem.currentReadIndex : qrItem.currentReadIndex+4])
+		fmt.Println("dataType", dataType)
 		qrItem.currentReadIndex += 4
 		switch dataType {
 		case qrDataTypeEnd:
@@ -1467,6 +1473,8 @@ dataTypeDecode:
 			err = qrItem.readNumricData()
 		case qrDataType8BitByte:
 			err = qrItem.read8BitByteData()
+		case qrDataTypeECI:
+			err = qrItem.readECIData()
 		default:
 			return errors.New("this data type is not currently supported")
 		}
@@ -1502,11 +1510,17 @@ func (qrItem *QRCodeItem) checkNotIsData(x, y int) bool {
 		}
 	}
 
+	// 版本信息区域
+
 	// Alignment Patterns
 	qrDataInfo := QRDataInfoList[qrItem.version]
-	for _, alignPattern := range qrDataInfo.alignmentPatterns {
-		if (math.Abs(float64(alignPattern - x))) < 3 {
-			if (math.Abs(float64(alignPattern - y))) < 3 {
+	apLastIndex := len(qrDataInfo.alignmentPatterns) - 1
+	for xi, alignPattern := range qrDataInfo.alignmentPatterns {
+		for yi, alignPatternY := range qrDataInfo.alignmentPatterns {
+			if (math.Abs(float64(alignPattern-x))) < 3 && (math.Abs(float64(alignPatternY-y))) < 3 {
+				if (xi == 0 && yi == 0) || (xi == apLastIndex && yi == 0) || (yi == apLastIndex && xi == 0) {
+					return false
+				}
 				return true
 			}
 		}
@@ -1602,5 +1616,9 @@ func (qrItem *QRCodeItem) read8BitByteData() error {
 		Type:   img.ValueTypeString,
 		String: qrItem.result.String + string(result),
 	}
+	return nil
+}
+
+func (qrItem *QRCodeItem) readECIData() error {
 	return nil
 }
