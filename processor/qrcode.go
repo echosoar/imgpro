@@ -695,6 +695,7 @@ func (qr *QRCode) newCorner(lineRegionIndex int, lineRegion *QRCodeRegion, cente
 		if thirdIsUnderLine == posiIsUnderLine {
 			continue
 		}
+		// distance := math.Abs(k*float64(posi.X)-float64(posi.Y)+b) / ab
 		distance := int(math.Sqrt(math.Pow(float64(posi.X-firstPixelPosi.X), 2.0)+math.Pow(float64(posi.Y-firstPixelPosi.Y), 2.0)) + math.Sqrt(math.Pow(float64(posi.X-secondPixelPosi.X), 2.0)+math.Pow(float64(posi.Y-secondPixelPosi.Y), 2.0)))
 		if distance > fouthCornerMaxDistance {
 			fouthCornerMaxDistance = distance
@@ -815,9 +816,10 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	qrCodeItem.version = qr.getVersion(qrCodeItem)
 	qrCodeItem.size = qrCodeItem.version*4 + 17
 	qrCodeItem.Pixels = make([]int, qrCodeItem.size*qrCodeItem.size)
-	fmt.Println("qrCodeItem.version", qrCodeItem.version, qrCodeItem.size)
+
 	// 获取图像透视矩阵
 	posies := []img.ValuePosition{corners[1].corners[0], corners[2].corners[0], pointInfo, corners[0].corners[0]}
+	fmt.Println("qrCodeItem.version", pointInfo, hCorner.corners[0], hCorner.corners[1], vCorner.corners[0], vCorner.corners[3])
 	matrix := method.PerspectiveMap(&posies, float64(qrCodeItem.size)-float64(qrCornerSize), float64(qrCodeItem.size)-float64(qrCornerSize))
 	qrCodeItem.matrix = matrix
 	qr.autoAdjustmentMatrix(qrCodeItem, &matrix)
@@ -1620,5 +1622,12 @@ func (qrItem *QRCodeItem) read8BitByteData() error {
 }
 
 func (qrItem *QRCodeItem) readECIData() error {
+	dataStartIndex := qrItem.currentReadIndex + 8
+	indicator := method.BinaryToInt(qrItem.blocksData[qrItem.currentReadIndex:dataStartIndex])
+
+	if indicator != 26 {
+		return errors.New("only support utf-8 0001 1010")
+	}
+	qrItem.currentReadIndex = dataStartIndex
 	return nil
 }
