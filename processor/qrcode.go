@@ -819,19 +819,34 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	qrCodeItem.Pixels = make([]int, qrCodeItem.size*qrCodeItem.size)
 
 	fmt.Println("pointInfo", pointInfo)
-	// pointInfo.X = 707
-	// pointInfo.Y = 1339
+
 	// 超过7版本，就有 alignPattern 了
 	if qrCodeItem.version >= 7 {
 		areaRange := method.PointDistanceInt(centerCorner.corners[0].X, centerCorner.corners[0].Y, hCorner.corners[3].X, hCorner.corners[3].Y) * 3 / qrCodeItem.size
+	checkPointInfo:
 		for i := 0; i < areaRange; i++ {
-			changeList := []int{i}
-			if i != 0 {
-				changeList = []int{-i, i}
+			for j := 0; j < areaRange; j++ {
+				// changeList := []int{i}
+				// if i != 0 {
+				// 	changeList = []int{-i, i}
+				// }
+				newPosi := img.ValuePosition{X: pointInfo.X + i, Y: pointInfo.Y + j}
+				posiIndex := newPosi.X + newPosi.Y*qr.Width
+				if qr.greyPixels[posiIndex] == 0 {
+					continue
+				}
+				matched, newX, newY := qr.check111(newPosi.X, newPosi.Y)
+				if matched {
+					pointInfo.X = newX
+					pointInfo.Y = newY
+					break checkPointInfo
+				}
 			}
-			fmt.Println("changeList", changeList)
 		}
 	}
+
+	// pointInfo.X = 707
+	// pointInfo.Y = 1339
 
 	// 获取图像透视矩阵
 	posies := []img.ValuePosition{corners[1].corners[0], corners[2].corners[0], pointInfo, corners[0].corners[0]}
@@ -839,12 +854,12 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	matrix := method.PerspectiveMap(&posies, float64(qrCodeItem.size)-float64(qrCornerSize), float64(qrCodeItem.size)-float64(qrCornerSize))
 	qrCodeItem.matrix = matrix
 	qr.autoAdjustmentMatrix(qrCodeItem, &matrix)
-	// rgba := make([]img.RGBA, qrCodeItem.size*qrCodeItem.size)
+	rgba := make([]img.RGBA, qrCodeItem.size*qrCodeItem.size)
 	// 获取图像透视像素点
 	for line := 0; line < qrCodeItem.size; line++ {
 		for row := 0; row < qrCodeItem.size; row++ {
 			pixelIndex := line*qrCodeItem.size + row
-			// rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
+			rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
 			qrCodeItem.Pixels[pixelIndex] = qrPixelWhite
 			// 之所以加0.5是为了获取到像素中心
 			point := method.PerspectiveTransform(&qrCodeItem.matrix, float64(row)+0.5, float64(line)+0.5)
@@ -853,13 +868,117 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 				index := point.Y*qr.Width + point.X
 				if qr.greyPixels[index] != 0 {
 					qrCodeItem.Pixels[pixelIndex] = qrPixelBlack
-					// rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
+					rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
 				}
 			}
 		}
 	}
-	// method.OutputToImg("./ignore_perspective.png", qrCodeItem.size, qrCodeItem.size, rgba)
+	method.OutputToImg("./ignore_perspective.png", qrCodeItem.size, qrCodeItem.size, rgba)
 	qrCodeItem.decode()
+}
+
+// 检测是否是 1:1:1
+func (qr *QRCode) check111(x, y int) (bool, int, int) {
+	xi := x
+	xj := x
+	yi := y
+	yj := y
+	colorChangeXIndex := make([]int, 0)
+	colorChangeYIndex := make([]int, 0)
+
+	lastColor := qrIsBlack
+	colorChangedCount := 0
+	for xi >= 0 {
+		xi--
+		index := xi + y*qr.Width
+		curColor := qrIsBlack
+		if qr.greyPixels[index] == 0 {
+			curColor = qrIsWhite
+		}
+		if curColor != lastColor {
+			lastColor = curColor
+			colorChangedCount++
+			colorChangeXIndex = method.ConcatArray([]int{xi}, colorChangeXIndex)
+			if colorChangedCount == 2 {
+				break
+			}
+		}
+	}
+	lastColor = qrIsBlack
+	colorChangedCount = 0
+
+	for xj < qr.Width {
+		xj++
+		index := xj + y*qr.Width
+		curColor := qrIsBlack
+		if qr.greyPixels[index] == 0 {
+			curColor = qrIsWhite
+		}
+		if curColor != lastColor {
+			lastColor = curColor
+			colorChangedCount++
+			colorChangeXIndex = append(colorChangeXIndex, xj)
+			if colorChangedCount == 2 {
+				break
+			}
+		}
+	}
+	diff := []float64{
+		float64(colorChangeXIndex[1] - colorChangeXIndex[0]),
+		float64(colorChangeXIndex[2] - colorChangeXIndex[1]),
+		float64(colorChangeXIndex[3] - colorChangeXIndex[2]),
+	}
+	if math.Abs(diff[1]/diff[0]-1) > 0.2 || math.Abs(diff[2]/diff[1]-1) > 0.2 {
+		return false, 0, 0
+	}
+
+	lastColor = qrIsBlack
+	colorChangedCount = 0
+	for yi >= 0 {
+		yi--
+		index := x + yi*qr.Width
+		curColor := qrIsBlack
+		if qr.greyPixels[index] == 0 {
+			curColor = qrIsWhite
+		}
+		if curColor != lastColor {
+			lastColor = curColor
+			colorChangedCount++
+			colorChangeYIndex = method.ConcatArray([]int{yi}, colorChangeYIndex)
+			if colorChangedCount == 2 {
+				break
+			}
+		}
+	}
+
+	lastColor = qrIsBlack
+	colorChangedCount = 0
+
+	for yj < qr.Height {
+		yj++
+		index := x + yj*qr.Width
+		curColor := qrIsBlack
+		if qr.greyPixels[index] == 0 {
+			curColor = qrIsWhite
+		}
+		if curColor != lastColor {
+			lastColor = curColor
+			colorChangedCount++
+			colorChangeYIndex = append(colorChangeYIndex, yj)
+			if colorChangedCount == 2 {
+				break
+			}
+		}
+	}
+	diffY := []float64{
+		float64(colorChangeYIndex[1] - colorChangeYIndex[0]),
+		float64(colorChangeYIndex[2] - colorChangeYIndex[1]),
+		float64(colorChangeYIndex[3] - colorChangeYIndex[2]),
+	}
+	if math.Abs(diffY[1]/diffY[0]-1) > 0.2 || math.Abs(diffY[2]/diffY[1]-1) > 0.2 {
+		return false, 0, 0
+	}
+	return true, x, y
 }
 
 // 获取二维码版本
