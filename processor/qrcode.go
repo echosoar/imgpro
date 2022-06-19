@@ -801,6 +801,7 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	if !isExistsPoint {
 		return
 	}
+
 	corners := []*QRCodeCorner{hCorner, centerCorner, vCorner}
 
 	qrCodeItem := &QRCodeItem{
@@ -816,6 +817,21 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	qrCodeItem.version = qr.getVersion(qrCodeItem)
 	qrCodeItem.size = qrCodeItem.version*4 + 17
 	qrCodeItem.Pixels = make([]int, qrCodeItem.size*qrCodeItem.size)
+
+	fmt.Println("pointInfo", pointInfo)
+	// pointInfo.X = 707
+	// pointInfo.Y = 1339
+	// 超过7版本，就有 alignPattern 了
+	if qrCodeItem.version >= 7 {
+		areaRange := method.PointDistanceInt(centerCorner.corners[0].X, centerCorner.corners[0].Y, hCorner.corners[3].X, hCorner.corners[3].Y) * 3 / qrCodeItem.size
+		for i := 0; i < areaRange; i++ {
+			changeList := []int{i}
+			if i != 0 {
+				changeList = []int{-i, i}
+			}
+			fmt.Println("changeList", changeList)
+		}
+	}
 
 	// 获取图像透视矩阵
 	posies := []img.ValuePosition{corners[1].corners[0], corners[2].corners[0], pointInfo, corners[0].corners[0]}
@@ -848,9 +864,20 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 
 // 获取二维码版本
 func (qr *QRCode) getVersion(qrItem *QRCodeItem) int {
+
+	centerCornerX := float64(qrItem.corners[1].corners[2].X)
+	centerCornerY := float64(qrItem.corners[1].corners[2].Y)
+	centerCornerPerPixel := method.PointDistance(centerCornerX, centerCornerY, float64(qrItem.corners[1].corners[3].X), float64(qrItem.corners[1].corners[3].Y)) / 14
+	bottomCornerX := float64(qrItem.corners[0].corners[1].X)
+	bottomCornerY := float64(qrItem.corners[0].corners[1].Y)
+	bottomCornerPerPixel := method.PointDistance(bottomCornerX, bottomCornerY, float64(qrItem.corners[0].corners[0].X), float64(qrItem.corners[0].corners[0].Y)) / 14
+	rightCornerX := float64(qrItem.corners[2].corners[3].X)
+	rightCornerY := float64(qrItem.corners[2].corners[3].Y)
+	rightCornerPerPixel := method.PointDistance(rightCornerX, rightCornerY, float64(qrItem.corners[2].corners[0].X), float64(qrItem.corners[2].corners[0].Y)) / 14
+
 	cornerCorners := [][]float64{
-		{float64(qrItem.corners[1].corners[2].X) - 0.5, float64(qrItem.corners[1].corners[2].Y) - 0.5, float64(qrItem.corners[0].corners[1].X) - 0.5, float64(qrItem.corners[0].corners[1].Y) + 0.5},
-		{float64(qrItem.corners[1].corners[2].X) - 0.5, float64(qrItem.corners[1].corners[2].Y) - 0.5, float64(qrItem.corners[2].corners[3].X) + 0.5, float64(qrItem.corners[2].corners[3].Y) + 0.5},
+		{centerCornerX - centerCornerPerPixel, centerCornerY - centerCornerPerPixel, bottomCornerX - bottomCornerPerPixel, bottomCornerY + bottomCornerPerPixel},
+		{centerCornerX - centerCornerPerPixel, centerCornerY - centerCornerPerPixel, rightCornerX + rightCornerPerPixel, rightCornerY - rightCornerPerPixel},
 	}
 	curMatchedBlackPoint := 0
 	for _, corners := range cornerCorners {
