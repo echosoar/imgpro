@@ -695,6 +695,7 @@ func (qr *QRCode) newCorner(lineRegionIndex int, lineRegion *QRCodeRegion, cente
 		if thirdIsUnderLine == posiIsUnderLine {
 			continue
 		}
+		// distance := math.Abs(k*float64(posi.X)-float64(posi.Y)+b) / ab
 		distance := int(math.Sqrt(math.Pow(float64(posi.X-firstPixelPosi.X), 2.0)+math.Pow(float64(posi.Y-firstPixelPosi.Y), 2.0)) + math.Sqrt(math.Pow(float64(posi.X-secondPixelPosi.X), 2.0)+math.Pow(float64(posi.Y-secondPixelPosi.Y), 2.0)))
 		if distance > fouthCornerMaxDistance {
 			fouthCornerMaxDistance = distance
@@ -800,6 +801,7 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	if !isExistsPoint {
 		return
 	}
+
 	corners := []*QRCodeCorner{hCorner, centerCorner, vCorner}
 
 	qrCodeItem := &QRCodeItem{
@@ -815,18 +817,41 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	qrCodeItem.version = qr.getVersion(qrCodeItem)
 	qrCodeItem.size = qrCodeItem.version*4 + 17
 	qrCodeItem.Pixels = make([]int, qrCodeItem.size*qrCodeItem.size)
-	fmt.Println("qrCodeItem.version", qrCodeItem.version, qrCodeItem.size)
+
+	// 超过7版本，就有 alignPattern 了
+	if qrCodeItem.version >= 7 {
+		areaRange := method.PointDistanceInt(centerCorner.corners[0].X, centerCorner.corners[0].Y, hCorner.corners[3].X, hCorner.corners[3].Y) * 3 / qrCodeItem.size
+	checkPointInfo:
+		for i := 0; i < areaRange; i++ {
+			for j := 0; j < areaRange; j++ {
+				// changeList := []int{i}
+				// if i != 0 {
+				// 	changeList = []int{-i, i}
+				// }
+				newPosi := img.ValuePosition{X: pointInfo.X + i, Y: pointInfo.Y + j}
+				posiIndex := newPosi.X + newPosi.Y*qr.Width
+				if qr.greyPixels[posiIndex] == 0 {
+					continue
+				}
+				matched, newX, newY := qr.check111(qrCodeItem, newPosi.X, newPosi.Y)
+				if matched {
+					pointInfo.X = newX
+					pointInfo.Y = newY
+					break checkPointInfo
+				}
+			}
+		}
+	}
+
 	// 获取图像透视矩阵
 	posies := []img.ValuePosition{corners[1].corners[0], corners[2].corners[0], pointInfo, corners[0].corners[0]}
 	matrix := method.PerspectiveMap(&posies, float64(qrCodeItem.size)-float64(qrCornerSize), float64(qrCodeItem.size)-float64(qrCornerSize))
 	qrCodeItem.matrix = matrix
 	qr.autoAdjustmentMatrix(qrCodeItem, &matrix)
-	// rgba := make([]img.RGBA, qrCodeItem.size*qrCodeItem.size)
 	// 获取图像透视像素点
 	for line := 0; line < qrCodeItem.size; line++ {
 		for row := 0; row < qrCodeItem.size; row++ {
 			pixelIndex := line*qrCodeItem.size + row
-			// rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
 			qrCodeItem.Pixels[pixelIndex] = qrPixelWhite
 			// 之所以加0.5是为了获取到像素中心
 			point := method.PerspectiveTransform(&qrCodeItem.matrix, float64(row)+0.5, float64(line)+0.5)
@@ -835,20 +860,193 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 				index := point.Y*qr.Width + point.X
 				if qr.greyPixels[index] != 0 {
 					qrCodeItem.Pixels[pixelIndex] = qrPixelBlack
-					// rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
 				}
 			}
 		}
 	}
-	// method.OutputToImg("./ignore_perspective.png", qrCodeItem.size, qrCodeItem.size, rgba)
 	qrCodeItem.decode()
+}
+
+// 检测是否是 1:1:1
+func (qr *QRCode) check111(qrCodeItem *QRCodeItem, x, y int) (bool, int, int) {
+	xi := x
+	xj := x
+	yi := y
+	yj := y
+	colorChangeXIndex := make([]int, 0)
+	colorChangeYIndex := make([]int, 0)
+
+	lastColor := qrIsBlack
+	colorChangedCount := 0
+	for xi >= 0 {
+		xi--
+		index := xi + y*qr.Width
+		curColor := qrIsBlack
+		if qr.greyPixels[index] == 0 {
+			curColor = qrIsWhite
+		}
+		if curColor != lastColor {
+			lastColor = curColor
+			colorChangedCount++
+			colorChangeXIndex = method.ConcatArray([]int{xi}, colorChangeXIndex)
+			if colorChangedCount == 2 {
+				break
+			}
+		}
+	}
+	lastColor = qrIsBlack
+	colorChangedCount = 0
+
+	for xj < qr.Width {
+		xj++
+		index := xj + y*qr.Width
+		curColor := qrIsBlack
+		if qr.greyPixels[index] == 0 {
+			curColor = qrIsWhite
+		}
+		if curColor != lastColor {
+			lastColor = curColor
+			colorChangedCount++
+			colorChangeXIndex = append(colorChangeXIndex, xj)
+			if colorChangedCount == 2 {
+				break
+			}
+		}
+	}
+	diff := []float64{
+		float64(colorChangeXIndex[1] - colorChangeXIndex[0]),
+		float64(colorChangeXIndex[2] - colorChangeXIndex[1]),
+		float64(colorChangeXIndex[3] - colorChangeXIndex[2]),
+	}
+	if math.Abs(diff[1]/diff[0]-1) > 0.2 || math.Abs(diff[2]/diff[1]-1) > 0.2 {
+		return false, 0, 0
+	}
+
+	lastColor = qrIsBlack
+	colorChangedCount = 0
+	for yi >= 0 {
+		yi--
+		index := x + yi*qr.Width
+		curColor := qrIsBlack
+		if qr.greyPixels[index] == 0 {
+			curColor = qrIsWhite
+		}
+		if curColor != lastColor {
+			lastColor = curColor
+			colorChangedCount++
+			colorChangeYIndex = method.ConcatArray([]int{yi}, colorChangeYIndex)
+			if colorChangedCount == 2 {
+				break
+			}
+		}
+	}
+
+	lastColor = qrIsBlack
+	colorChangedCount = 0
+
+	for yj < qr.Height {
+		yj++
+		index := x + yj*qr.Width
+		curColor := qrIsBlack
+		if qr.greyPixels[index] == 0 {
+			curColor = qrIsWhite
+		}
+		if curColor != lastColor {
+			lastColor = curColor
+			colorChangedCount++
+			colorChangeYIndex = append(colorChangeYIndex, yj)
+			if colorChangedCount == 2 {
+				break
+			}
+		}
+	}
+	diffY := []float64{
+		float64(colorChangeYIndex[1] - colorChangeYIndex[0]),
+		float64(colorChangeYIndex[2] - colorChangeYIndex[1]),
+		float64(colorChangeYIndex[3] - colorChangeYIndex[2]),
+	}
+	if math.Abs(diffY[1]/diffY[0]-1) > 0.2 || math.Abs(diffY[2]/diffY[1]-1) > 0.2 {
+		return false, 0, 0
+	}
+
+	xRange := (colorChangeXIndex[3] - colorChangeXIndex[0]) / 2
+	yRange := (colorChangeYIndex[3] - colorChangeYIndex[0]) / 2
+
+	startX := x - xRange
+	endX := x + xRange
+	if startX < 0 {
+		startX = 0
+	}
+	if endX > qr.Width {
+		endX = qr.Width
+	}
+
+	startY := y - yRange
+	endY := y + yRange
+	if startY < 0 {
+		startY = 0
+	}
+	if endY > qr.Height {
+		endY = qr.Height
+	}
+	pointMap := make([]int, (endX-startX)*(endY-startY))
+	distance, newX, newY := qr.check111Black(qrCodeItem, &pointMap, startX, endX, startY, endY, x, y)
+	if distance > 0 {
+		return true, newX, newY
+	}
+	return false, x, y
+}
+
+func (qr *QRCode) check111Black(qrCodeItem *QRCodeItem, pointMap *[]int, startX, endX, startY, endY, x, y int) (float64, int, int) {
+	index := x + y*qr.Width
+	pointIndex := (endX-startX)*(y-startY) + (x - startX)
+	if (*pointMap)[pointIndex] != 0 {
+		return 0.0, 0, 0
+	}
+	if qr.greyPixels[index] == 0 {
+		(*pointMap)[pointIndex] = 2 // white
+		return 0.0, 0, 0
+	}
+	(*pointMap)[pointIndex] = 1 // black;
+	distance := method.PointDistance(float64(x), float64(y), float64(qrCodeItem.corners[1].corners[2].X), float64(qrCodeItem.corners[1].corners[2].Y))
+	resX := x
+	resY := y
+	offsetRange := []int{-1, 1}
+	for _, xOffset := range offsetRange {
+		for _, yOffset := range offsetRange {
+			newX := x + xOffset
+			newY := y + yOffset
+			if newX < startX || newX >= endX || newY < startY || newY >= endY {
+				continue
+			}
+			checkDistance, checkX, checkY := qr.check111Black(qrCodeItem, pointMap, startX, endX, startY, endY, newX, newY)
+			if checkDistance > 0 && checkDistance < distance {
+				distance = checkDistance
+				resX = checkX
+				resY = checkY
+			}
+
+		}
+	}
+	return distance, resX, resY
 }
 
 // 获取二维码版本
 func (qr *QRCode) getVersion(qrItem *QRCodeItem) int {
+
+	centerCornerX := float64(qrItem.corners[1].corners[2].X)
+	centerCornerY := float64(qrItem.corners[1].corners[2].Y)
+	centerCornerPerPixel := method.PointDistance(centerCornerX, centerCornerY, float64(qrItem.corners[1].corners[3].X), float64(qrItem.corners[1].corners[3].Y)) / 14
+	bottomCornerX := float64(qrItem.corners[0].corners[1].X)
+	bottomCornerY := float64(qrItem.corners[0].corners[1].Y)
+	bottomCornerPerPixel := method.PointDistance(bottomCornerX, bottomCornerY, float64(qrItem.corners[0].corners[0].X), float64(qrItem.corners[0].corners[0].Y)) / 14
+	rightCornerX := float64(qrItem.corners[2].corners[3].X)
+	rightCornerY := float64(qrItem.corners[2].corners[3].Y)
+	rightCornerPerPixel := method.PointDistance(rightCornerX, rightCornerY, float64(qrItem.corners[2].corners[0].X), float64(qrItem.corners[2].corners[0].Y)) / 14
+
 	cornerCorners := [][]float64{
-		{float64(qrItem.corners[1].corners[2].X) - 0.5, float64(qrItem.corners[1].corners[2].Y) - 0.5, float64(qrItem.corners[0].corners[1].X) - 0.5, float64(qrItem.corners[0].corners[1].Y) + 0.5},
-		{float64(qrItem.corners[1].corners[2].X) - 0.5, float64(qrItem.corners[1].corners[2].Y) - 0.5, float64(qrItem.corners[2].corners[3].X) + 0.5, float64(qrItem.corners[2].corners[3].Y) + 0.5},
+		{centerCornerX - centerCornerPerPixel, centerCornerY - centerCornerPerPixel, bottomCornerX - bottomCornerPerPixel, bottomCornerY + bottomCornerPerPixel},
+		{centerCornerX - centerCornerPerPixel, centerCornerY - centerCornerPerPixel, rightCornerX + rightCornerPerPixel, rightCornerY - rightCornerPerPixel},
 	}
 	curMatchedBlackPoint := 0
 	for _, corners := range cornerCorners {
@@ -1169,7 +1367,6 @@ func (qr *QRCode) autoAdjustmentMatrix(qrItem *QRCodeItem, matrix *[]float64) in
 	score := qr.scoreMatrix(qrItem, matrix)
 
 	matrixValue := *matrix
-	fmt.Println("score", score, matrixValue)
 	step := 0.02
 	for _, changeIndexList := range autoAdjustmentMatrixChangeIndex {
 		for changePercent := -0.5; changePercent < 0.5; changePercent += step {
@@ -1186,7 +1383,6 @@ func (qr *QRCode) autoAdjustmentMatrix(qrItem *QRCodeItem, matrix *[]float64) in
 			}
 		}
 	}
-	fmt.Println("score end", score, *matrix)
 	qrItem.matrix = *matrix
 	return score
 }
@@ -1464,7 +1660,6 @@ foreachPixel:
 dataTypeDecode:
 	for qrItem.currentReadIndex < len(qrItem.blocksData)-4 {
 		dataType := method.BinaryToInt(blocksData[qrItem.currentReadIndex : qrItem.currentReadIndex+4])
-		fmt.Println("dataType", dataType)
 		qrItem.currentReadIndex += 4
 		switch dataType {
 		case qrDataTypeEnd:
@@ -1620,5 +1815,12 @@ func (qrItem *QRCodeItem) read8BitByteData() error {
 }
 
 func (qrItem *QRCodeItem) readECIData() error {
+	dataStartIndex := qrItem.currentReadIndex + 8
+	indicator := method.BinaryToInt(qrItem.blocksData[qrItem.currentReadIndex:dataStartIndex])
+
+	if indicator != 26 {
+		return errors.New("only support utf-8 0001 1010")
+	}
+	qrItem.currentReadIndex = dataStartIndex
 	return nil
 }

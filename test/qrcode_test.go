@@ -74,18 +74,18 @@ func TestQRCodeTestAlipay(t *testing.T) {
 	}
 }
 
-// func TestQRCodeTestECI(t *testing.T) {
-// 	result := Run("./imgs/qrcode/eci.png", []string{"qrcode"})
-// 	if result["qrcode"].Frames[0].List[0].Values["value"].String != "https://qr.alipay.com/fkx1204145jqmapfxwzbzfa" {
-// 		jsonData, _ := json.Marshal(result)
-// 		t.Fatal("qrcode cnen err", string(jsonData))
-// 	}
-// }
+func TestQRCodeTestECI(t *testing.T) {
+	result := Run("./imgs/qrcode/eci.png", []string{"qrcode"})
+	if result["qrcode"].Frames[0].List[0].Values["value"].String != "https://qm.qq.com/cgi-bin/qm/qr?k=ELaNID3csLNBJSUXW91-Sbv8Bad22pGq&authKey=CmpRJqghJxNEv/Sb7F9Z3SJHMMZpshhOevlJr+nkP7X9QPIAqm4dCQNJvUxMbJ0U&noverify=0" {
+		jsonData, _ := json.Marshal(result)
+		t.Fatal("qrcode cnen err", string(jsonData))
+	}
+}
 
-// func TestQRCodeTestNX(t *testing.T) {
-// 	result := Run("./imgs/qrcode/nx.jpeg", []string{"qrcode"})
-// 	if result["qrcode"].Frames[0].List[0].Values["value"].String != "https://tm-web.pin-dao.cn/nx-xp?oid=668361335772295168&sc=26074125&pid=LY260741252022061800160" {
-// 		jsonData, _ := json.Marshal(result)
-// 		t.Fatal("qrcode cnen err", string(jsonData))
-// 	}
-// }
+func TestQRCodeTestNX(t *testing.T) {
+	result := Run("./imgs/qrcode/nx.jpeg", []string{"qrcode"})
+	if result["qrcode"].Frames[0].List[0].Values["value"].String != "https://tm-web.pin-dao.cn/nx-xp?oid=668361335772295168&sc=26074125&pid=LY260741252022061800160" {
+		jsonData, _ := json.Marshal(result)
+		t.Fatal("qrcode cnen err", string(jsonData))
+	}
+}
