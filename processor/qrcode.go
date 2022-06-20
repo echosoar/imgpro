@@ -818,8 +818,6 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 	qrCodeItem.size = qrCodeItem.version*4 + 17
 	qrCodeItem.Pixels = make([]int, qrCodeItem.size*qrCodeItem.size)
 
-	fmt.Println("pointInfo", pointInfo)
-
 	// 超过7版本，就有 alignPattern 了
 	if qrCodeItem.version >= 7 {
 		areaRange := method.PointDistanceInt(centerCorner.corners[0].X, centerCorner.corners[0].Y, hCorner.corners[3].X, hCorner.corners[3].Y) * 3 / qrCodeItem.size
@@ -835,7 +833,7 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 				if qr.greyPixels[posiIndex] == 0 {
 					continue
 				}
-				matched, newX, newY := qr.check111(newPosi.X, newPosi.Y)
+				matched, newX, newY := qr.check111(qrCodeItem, newPosi.X, newPosi.Y)
 				if matched {
 					pointInfo.X = newX
 					pointInfo.Y = newY
@@ -845,21 +843,15 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 		}
 	}
 
-	// pointInfo.X = 707
-	// pointInfo.Y = 1339
-
 	// 获取图像透视矩阵
 	posies := []img.ValuePosition{corners[1].corners[0], corners[2].corners[0], pointInfo, corners[0].corners[0]}
-	fmt.Println("qrCodeItem.version", pointInfo, hCorner.corners[0], hCorner.corners[1], vCorner.corners[0], vCorner.corners[3])
 	matrix := method.PerspectiveMap(&posies, float64(qrCodeItem.size)-float64(qrCornerSize), float64(qrCodeItem.size)-float64(qrCornerSize))
 	qrCodeItem.matrix = matrix
 	qr.autoAdjustmentMatrix(qrCodeItem, &matrix)
-	rgba := make([]img.RGBA, qrCodeItem.size*qrCodeItem.size)
 	// 获取图像透视像素点
 	for line := 0; line < qrCodeItem.size; line++ {
 		for row := 0; row < qrCodeItem.size; row++ {
 			pixelIndex := line*qrCodeItem.size + row
-			rgba[pixelIndex] = img.RGBA{R: 255, G: 255, B: 255, A: 255}
 			qrCodeItem.Pixels[pixelIndex] = qrPixelWhite
 			// 之所以加0.5是为了获取到像素中心
 			point := method.PerspectiveTransform(&qrCodeItem.matrix, float64(row)+0.5, float64(line)+0.5)
@@ -868,17 +860,15 @@ func (qr *QRCode) polymerizateExec(centerCorner *QRCodeCorner, hCorner *QRCodeCo
 				index := point.Y*qr.Width + point.X
 				if qr.greyPixels[index] != 0 {
 					qrCodeItem.Pixels[pixelIndex] = qrPixelBlack
-					rgba[pixelIndex] = img.RGBA{R: 0, G: 0, B: 0, A: 255}
 				}
 			}
 		}
 	}
-	method.OutputToImg("./ignore_perspective.png", qrCodeItem.size, qrCodeItem.size, rgba)
 	qrCodeItem.decode()
 }
 
 // 检测是否是 1:1:1
-func (qr *QRCode) check111(x, y int) (bool, int, int) {
+func (qr *QRCode) check111(qrCodeItem *QRCodeItem, x, y int) (bool, int, int) {
 	xi := x
 	xj := x
 	yi := y
@@ -978,7 +968,67 @@ func (qr *QRCode) check111(x, y int) (bool, int, int) {
 	if math.Abs(diffY[1]/diffY[0]-1) > 0.2 || math.Abs(diffY[2]/diffY[1]-1) > 0.2 {
 		return false, 0, 0
 	}
-	return true, x, y
+
+	xRange := (colorChangeXIndex[3] - colorChangeXIndex[0]) / 2
+	yRange := (colorChangeYIndex[3] - colorChangeYIndex[0]) / 2
+
+	startX := x - xRange
+	endX := x + xRange
+	if startX < 0 {
+		startX = 0
+	}
+	if endX > qr.Width {
+		endX = qr.Width
+	}
+
+	startY := y - yRange
+	endY := y + yRange
+	if startY < 0 {
+		startY = 0
+	}
+	if endY > qr.Height {
+		endY = qr.Height
+	}
+	pointMap := make([]int, (endX-startX)*(endY-startY))
+	distance, newX, newY := qr.check111Black(qrCodeItem, &pointMap, startX, endX, startY, endY, x, y)
+	if distance > 0 {
+		return true, newX, newY
+	}
+	return false, x, y
+}
+
+func (qr *QRCode) check111Black(qrCodeItem *QRCodeItem, pointMap *[]int, startX, endX, startY, endY, x, y int) (float64, int, int) {
+	index := x + y*qr.Width
+	pointIndex := (endX-startX)*(y-startY) + (x - startX)
+	if (*pointMap)[pointIndex] != 0 {
+		return 0.0, 0, 0
+	}
+	if qr.greyPixels[index] == 0 {
+		(*pointMap)[pointIndex] = 2 // white
+		return 0.0, 0, 0
+	}
+	(*pointMap)[pointIndex] = 1 // black;
+	distance := method.PointDistance(float64(x), float64(y), float64(qrCodeItem.corners[1].corners[2].X), float64(qrCodeItem.corners[1].corners[2].Y))
+	resX := x
+	resY := y
+	offsetRange := []int{-1, 1}
+	for _, xOffset := range offsetRange {
+		for _, yOffset := range offsetRange {
+			newX := x + xOffset
+			newY := y + yOffset
+			if newX < startX || newX >= endX || newY < startY || newY >= endY {
+				continue
+			}
+			checkDistance, checkX, checkY := qr.check111Black(qrCodeItem, pointMap, startX, endX, startY, endY, newX, newY)
+			if checkDistance > 0 && checkDistance < distance {
+				distance = checkDistance
+				resX = checkX
+				resY = checkY
+			}
+
+		}
+	}
+	return distance, resX, resY
 }
 
 // 获取二维码版本
@@ -1317,7 +1367,6 @@ func (qr *QRCode) autoAdjustmentMatrix(qrItem *QRCodeItem, matrix *[]float64) in
 	score := qr.scoreMatrix(qrItem, matrix)
 
 	matrixValue := *matrix
-	fmt.Println("score", score, matrixValue)
 	step := 0.02
 	for _, changeIndexList := range autoAdjustmentMatrixChangeIndex {
 		for changePercent := -0.5; changePercent < 0.5; changePercent += step {
@@ -1334,7 +1383,6 @@ func (qr *QRCode) autoAdjustmentMatrix(qrItem *QRCodeItem, matrix *[]float64) in
 			}
 		}
 	}
-	fmt.Println("score end", score, *matrix)
 	qrItem.matrix = *matrix
 	return score
 }
@@ -1612,7 +1660,6 @@ foreachPixel:
 dataTypeDecode:
 	for qrItem.currentReadIndex < len(qrItem.blocksData)-4 {
 		dataType := method.BinaryToInt(blocksData[qrItem.currentReadIndex : qrItem.currentReadIndex+4])
-		fmt.Println("dataType", dataType)
 		qrItem.currentReadIndex += 4
 		switch dataType {
 		case qrDataTypeEnd:

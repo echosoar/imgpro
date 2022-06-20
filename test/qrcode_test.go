@@ -82,10 +82,10 @@ func TestQRCodeTestECI(t *testing.T) {
 	}
 }
 
-// func TestQRCodeTestNX(t *testing.T) {
-// 	result := Run("./imgs/qrcode/nx.jpeg", []string{"qrcode"})
-// 	if result["qrcode"].Frames[0].List[0].Values["value"].String != "https://tm-web.pin-dao.cn/nx-xp?oid=668361335772295168&sc=26074125&pid=LY260741252022061800160" {
-// 		jsonData, _ := json.Marshal(result)
-// 		t.Fatal("qrcode cnen err", string(jsonData))
-// 	}
-// }
+func TestQRCodeTestNX(t *testing.T) {
+	result := Run("./imgs/qrcode/nx.jpeg", []string{"qrcode"})
+	if result["qrcode"].Frames[0].List[0].Values["value"].String != "https://tm-web.pin-dao.cn/nx-xp?oid=668361335772295168&sc=26074125&pid=LY260741252022061800160" {
+		jsonData, _ := json.Marshal(result)
+		t.Fatal("qrcode cnen err", string(jsonData))
+	}
+}
