@@ -89,3 +89,9 @@ func TestQRCodeTestNX(t *testing.T) {
 		t.Fatal("qrcode cnen err", string(jsonData))
 	}
 }
+
+func BenchmarkTestNX(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		Run("./imgs/qrcode/nx.jpeg", []string{"qrcode"})
+	}
+}

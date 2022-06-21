@@ -18,6 +18,9 @@ jobs:
           command: |
             mkdir -p /tmp/test-reports
             gotestsum --junitfile /tmp/test-reports/unit-tests.xml
+      - run:
+          name: Run benchmark
+          command: cd test && go test -bench=. -benchmem
       - store_test_results:
           path: /tmp/test-reports
   build-wasm:
