@@ -30,16 +30,17 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 		if err != nil {
 			panic(err)
 		}
-		rgbaFrame := []img.RGBA{}
+		rgbaFrame := make([]img.RGBA, height*width)
 		for line := 0; line < height; line++ {
 			for col := 0; col < width; col++ {
+				index := line*width + col
 				r, g, b, a := originalImage.At(col, line).RGBA()
-				rgbaFrame = append(rgbaFrame, img.RGBA{
+				rgbaFrame[index] = img.RGBA{
 					R: utils.Uint32ToInt(r),
 					G: utils.Uint32ToInt(g),
 					B: utils.Uint32ToInt(b),
 					A: utils.Uint32ToInt(a),
-				})
+				}
 			}
 		}
 		frameRGBAs = append(frameRGBAs, img.Value{
