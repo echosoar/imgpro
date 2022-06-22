@@ -48,7 +48,7 @@ type QRCode struct {
 	Width      int
 	Height     int
 	Pixels     []img.RGBA
-	greyPixels []uint8
+	greyPixels []int
 	regions    []*QRCodeRegion
 	corners    []*QRCodeCorner
 	codeItems  []*QRCodeItem
@@ -95,8 +95,8 @@ type QRDataECC struct {
 }
 
 const (
-	qrThresholdSDen = 8
-	qrThresholdT    = 5
+	qrThresholdSDen = 8.0
+	qrThresholdT    = 5.0
 )
 
 const (
@@ -414,7 +414,7 @@ func (qr *QRCode) Run() {
 
 // 灰度化
 func (qr *QRCode) grayscale() {
-	greyPixels := make([]uint8, len(qr.Pixels))
+	greyPixels := make([]int, len(qr.Pixels))
 	for index, rgba := range qr.Pixels {
 		greyPixels[index] = method.RGBAToGrey(rgba)
 	}
@@ -423,16 +423,21 @@ func (qr *QRCode) grayscale() {
 
 // 二值化
 func (qr *QRCode) binarization() {
-	avgW := 0
-	avgU := 0
-	thresholds := qr.Width / qrThresholdSDen
+	avgW := 0.0
+	avgU := 0.0
+	thresholds := float64(qr.Width) / qrThresholdSDen
 	if thresholds < 1 {
 		thresholds = 1
 	}
 
+	pi := (thresholds - 1) / thresholds
+	qrThresholdTDiff100 := 100 - qrThresholdT
+	thresholds200 := 200 * thresholds
+	qtPi := qrThresholdTDiff100 / thresholds200
+
 	for line := 0; line < qr.Height; line++ {
 		lineStartPixelIndex := qr.Width * line
-		rowGreyPixels := qr.greyPixels[lineStartPixelIndex : lineStartPixelIndex+qr.Width]
+		// rowGreyPixels := qr.greyPixels[lineStartPixelIndex : lineStartPixelIndex+qr.Width]
 		rowAverage := make([]int, qr.Width)
 		for row := 0; row < qr.Width; row++ {
 			var w, u int
@@ -444,18 +449,19 @@ func (qr *QRCode) binarization() {
 				u = row
 			}
 
-			avgW = (avgW*(thresholds-1))/thresholds + int(rowGreyPixels[w])
-			avgU = (avgU*(thresholds-1))/thresholds + int(rowGreyPixels[u])
+			avgW = avgW*pi + float64(qr.greyPixels[w+lineStartPixelIndex])
+			avgU = avgU*pi + float64(qr.greyPixels[u+lineStartPixelIndex])
 
-			rowAverage[w] += avgW
-			rowAverage[u] += avgU
+			rowAverage[w] += int(avgW)
+			rowAverage[u] += int(avgU)
 		}
 
 		for row := 0; row < qr.Width; row++ {
-			if int(rowGreyPixels[row]) < rowAverage[row]*(100-qrThresholdT)/(200*thresholds) {
-				rowGreyPixels[row] = qrPixelBlack
+			pixelIndex := row + lineStartPixelIndex
+			if qr.greyPixels[pixelIndex] < int(float64(rowAverage[row])*qtPi) {
+				qr.greyPixels[pixelIndex] = qrPixelBlack
 			} else {
-				rowGreyPixels[row] = qrPixelWhite
+				qr.greyPixels[pixelIndex] = qrPixelWhite
 			}
 		}
 	}
@@ -589,9 +595,9 @@ func (qr *QRCode) fillRegion(row, line, pixel, regionIndex int, region *QRCodeRe
 	changedPixel := 0
 	// 填充
 	for i := left; i <= right; i++ {
-		newPixel := uint8(regionIndex)
+		newPixel := regionIndex
 		if rowGreyPixels[i] != newPixel {
-			rowGreyPixels[i] = uint8(regionIndex)
+			rowGreyPixels[i] = regionIndex
 			changedPixel++
 		}
 	}
@@ -629,7 +635,7 @@ func (qr *QRCode) newCorner(lineRegionIndex int, lineRegion *QRCodeRegion, cente
 	cornerIndex := len(qr.corners)
 	lineRegion.cornersIndex = cornerIndex
 	centerRegion.cornersIndex = cornerIndex
-	lineRegionIndexUint := uint8(lineRegionIndex)
+	lineRegionIndexUint := lineRegionIndex
 	// 寻找四个顶点
 	allPixelPositions := make([]img.ValuePosition, 0)
 
@@ -1473,7 +1479,7 @@ func (qr *QRCode) scoreArea(qrItem *QRCodeItem, matrix *[]float64, fromX, fromY,
 				return 0
 			}
 			index := point.Y*qr.Width + point.X
-			if int(qr.greyPixels[index]) != 0 {
+			if qr.greyPixels[index] != 0 {
 				if !isBlack {
 					score++
 				} else {

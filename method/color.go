@@ -4,10 +4,10 @@ import (
 	img "github.com/echosoar/imgpro/core"
 )
 
-func RGBAToGrey(rgba img.RGBA) uint8 {
+func RGBAToGrey(rgba img.RGBA) int {
 	// ref: https://www.dcode.fr/grayscale-image
 	Y := 0.2125*float64(rgba.R) + 0.7154*float64(rgba.G) + 0.0721*float64(rgba.B)
-	return uint8(Y)
+	return int(Y)
 }
 
 func IterateRGBA(point img.RGBA) []int {
