@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <h1>Imgpro Online Test</h1>
 <hr />
 <div>
@@ -67,6 +68,8 @@ function formatValue(valueInfo) {
           obj[key] = formatValue(valueInfo.Values[key])
         })
         return obj;
+      case 6:
+        return valueInfo.Rect
       case 5:
         return valueInfo.List.map(formatValue)
       case 7:
@@ -92,10 +95,11 @@ document.querySelector('#execBtn').addEventListener('click', function() {
   if (!cacheFileBuffer || !features.length) {
     return;
   }
-  let result;
   try {
-    result = imgExec(features, cacheFileBuffer);
-    document.getElementById("result").innerText = JSON.stringify(formatResult(JSON.parse(result)), null, 2);
+    const start = Date.now();
+    const result = imgExec(features, cacheFileBuffer);
+    const value = formatResult(JSON.parse(result));
+    document.getElementById("result").innerText = JSON.stringify({ time: Date.now() - start, value}, null, 2);
   } catch(e) {
     document.getElementById("result").innerText = 'error: ' + e.message
     load()
