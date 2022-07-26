@@ -16,18 +16,18 @@ func TestHUEPng(t *testing.T) {
 		t.Fatal("hue 0 error", result["hue"])
 	}
 
-	if result["hue"].Frames[0].Rgba[1].R != 106 || result["hue"].Frames[0].Rgba[1].G != 215 || result["hue"].Frames[0].Rgba[1].B != 229 || result["hue"].Frames[0].Rgba[1].A != 255 {
+	if result["hue"].Frames[0].Rgba[1].R != 105 || result["hue"].Frames[0].Rgba[1].G != 214 || result["hue"].Frames[0].Rgba[1].B != 228 || result["hue"].Frames[0].Rgba[1].A != 255 {
 		t.Fatal("hue 1 error")
 	}
 
-	if result["hue"].Frames[0].Rgba[2].R != 5 || result["hue"].Frames[0].Rgba[2].G != 5 || result["hue"].Frames[0].Rgba[2].B != 5 || result["hue"].Frames[0].Rgba[1].A != 255 {
+	if result["hue"].Frames[0].Rgba[2].R != 2 || result["hue"].Frames[0].Rgba[2].G != 2 || result["hue"].Frames[0].Rgba[2].B != 2 || result["hue"].Frames[0].Rgba[1].A != 255 {
 		t.Fatal("hue 2 error")
 	}
 }
 
 func TestHUEJpg(t *testing.T) {
 	result := Run("./imgs/exif.jpg", []string{"hue"})
-	if len(result["hue"].Frames[0].Rgba) != 6 {
+	if len(result["hue"].Frames[0].Rgba) != 4 {
 		t.Fatal("hue jpeg err", result["hue"].Frames[0].Rgba)
 	}
 }

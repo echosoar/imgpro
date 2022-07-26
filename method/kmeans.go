@@ -103,9 +103,24 @@ func (k *KMeans) initCenter() {
 }
 
 func (k *KMeans) GetResult() []img.RGBA {
-	result := k.Center
-	sort.SliceStable(result, func(i, j int) bool {
-		return len(k.groupPoint[i]) > len(k.groupPoint[j])
+	limit := len(k.AllPoints) / 100
+	curCenters := k.Center
+	resultIndex := make([]int, 0)
+	for index := range curCenters {
+		if len(k.groupPoint[index]) < limit {
+			continue
+		}
+		resultIndex = append(resultIndex, index)
+	}
+	sort.SliceStable(resultIndex, func(i, j int) bool {
+		indexI := resultIndex[i]
+		indexJ := resultIndex[j]
+		return len(k.groupPoint[indexI]) > len(k.groupPoint[indexJ])
 	})
+	result := make([]img.RGBA, 0)
+	for _, index := range resultIndex {
+		result = append(result, curCenters[index])
+	}
+
 	return result
 }
