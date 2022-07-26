@@ -9,27 +9,31 @@ import (
 func HUEProcessor(imgCore *img.Core) {
 	imgCore.Bind(&img.Processor{
 		Keys:          []string{"hue"},
-		PreConditions: []string{"rgba", "frame"},
+		PreConditions: []string{"rgba", "frame", "width", "height"},
 		Runner:        hueRunner,
 	})
 }
 
-const hueProcessSize = 200
+func hueExec(width int, height int, rgbaList []img.RGBA) []img.RGBA {
 
-func hueExec(rgbaList []img.RGBA) []img.RGBA {
+	minSize := width
+	if height < width {
+		minSize = height
+	}
+
 	// var hueResult []img.RGBA
-	var samplingStep int = 1
+	var samplingStep int = minSize / 100
 	var samplingRGBA []img.RGBA
 
-	size := len(rgbaList)
-	if size > hueProcessSize {
-		// int auto floor
-		samplingStep = size / hueProcessSize
+	if samplingStep < 1 {
+		samplingStep = 1
 	}
-	for index := 0; index < size; index += samplingStep {
-		samplingRGBA = append(samplingRGBA, rgbaList[index])
+	for hIndex := 0; hIndex < height; hIndex += samplingStep {
+		for wIndex := 0; wIndex < width; wIndex += samplingStep {
+			index := hIndex*width + wIndex
+			samplingRGBA = append(samplingRGBA, rgbaList[index])
+		}
 	}
-
 	// using canapy calc color size
 	canopyInstance := method.Canopy{
 		AllPoints: samplingRGBA,
@@ -38,10 +42,9 @@ func hueExec(rgbaList []img.RGBA) []img.RGBA {
 	}
 	canopyInstance.Run()
 	canopyResult := canopyInstance.Result(2)
-
 	kmeans := method.KMeans{
 		K:         len(canopyResult),
-		Center:    canopyResult,
+		Center:    make([]img.RGBA, 0),
 		AllPoints: samplingRGBA,
 	}
 	kmeans.Run()
@@ -50,13 +53,15 @@ func hueExec(rgbaList []img.RGBA) []img.RGBA {
 
 func hueRunner(core *img.Core) map[string]img.Value {
 	rgba := core.Result["rgba"].Frames
+	width := core.Result["width"].Int
+	height := core.Result["height"].Int
 
 	frame := core.Result["frame"].Int
 	var hueFrames []img.Value
 	for frameIndex := 0; frameIndex < frame; frameIndex++ {
 		hueFrames = append(hueFrames, img.Value{
 			Type: img.ValueTypeRGBA,
-			Rgba: hueExec(rgba[frameIndex].Rgba),
+			Rgba: hueExec(width, height, rgba[frameIndex].Rgba),
 		})
 	}
 

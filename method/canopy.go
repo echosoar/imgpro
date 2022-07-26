@@ -15,7 +15,7 @@ func (c *CanopyPoint) Add(point img.RGBA) {
 
 type Canopy struct {
 	AllPoints []img.RGBA
-	Canopies  []CanopyPoint
+	Canopies  []*CanopyPoint
 	T1        float64
 	T2        float64
 }
@@ -56,7 +56,7 @@ func (c *Canopy) Run() {
 			}
 
 			if index == len(c.Canopies) {
-				c.Canopies = append(c.Canopies, CanopyPoint{
+				c.Canopies = append(c.Canopies, &CanopyPoint{
 					Center: current,
 					Points: []img.RGBA{current},
 				})
@@ -76,7 +76,7 @@ func (c *Canopy) getRandom(allPoints []img.RGBA) {
 	current := allPoints[index]
 
 	c.AllPoints = append(allPoints[:index], allPoints[index+1:]...)
-	c.Canopies = append(c.Canopies, CanopyPoint{
+	c.Canopies = append(c.Canopies, &CanopyPoint{
 		Center: current,
 		Points: []img.RGBA{current},
 	})
