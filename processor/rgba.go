@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/draw"
+	"image/gif"
 
 	img "github.com/echosoar/imgpro/core"
 )
@@ -17,6 +18,31 @@ func RGBAProcessor(imgCore *img.Core) {
 	})
 }
 
+func readImageRGBA(width, height int, bounds *image.Rectangle, rgbaFrameRef *[]img.RGBA, rgba *image.RGBA) {
+	for line := 0; line < height; line++ {
+		for col := 0; col < width; col++ {
+			itemIndex := line*width + col
+			index := itemIndex * 4
+			if line < bounds.Min.Y || line > bounds.Min.Y || col < bounds.Min.X || col > bounds.Max.X {
+				(*rgbaFrameRef)[itemIndex] = img.RGBA{
+					R: 0,
+					G: 0,
+					B: 0,
+					A: 0,
+				}
+			} else {
+				(*rgbaFrameRef)[itemIndex] = img.RGBA{
+					R: int(rgba.Pix[index]),
+					G: int(rgba.Pix[index+1]),
+					B: int(rgba.Pix[index+2]),
+					A: int(rgba.Pix[index+3]),
+				}
+			}
+
+		}
+	}
+}
+
 func rgbaRunner(core *img.Core) map[string]img.Value {
 	imgType := core.Result["type"].String
 	width := core.Result["width"].Int
@@ -26,32 +52,38 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 
 	if imgType == "png" || imgType == "jpg" {
 		frame = 1
+		frameRGBAs = make([]img.Value, 1)
 		originalImage, _, err := image.Decode(bytes.NewReader(core.FileBinary))
 		if err != nil {
 			panic(err)
 		}
-		bounds := originalImage.Bounds()
-		rgba := image.NewRGBA(originalImage.Bounds())
-		draw.Draw(rgba, bounds, originalImage, bounds.Min, draw.Src)
 		rgbaFrame := make([]img.RGBA, height*width)
-		for line := 0; line < height; line++ {
-			for col := 0; col < width; col++ {
-				itemIndex := line*width + col
-				index := itemIndex * 4
-				rgbaFrame[itemIndex] = img.RGBA{
-					R: int(rgba.Pix[index]),
-					G: int(rgba.Pix[index+1]),
-					B: int(rgba.Pix[index+2]),
-					A: int(rgba.Pix[index+3]),
-				}
-			}
-		}
-		frameRGBAs = append(frameRGBAs, img.Value{
+		bounds := originalImage.Bounds()
+		rgba := image.NewRGBA(bounds)
+		draw.Draw(rgba, bounds, originalImage, bounds.Min, draw.Src)
+		readImageRGBA(width, height, &bounds, &rgbaFrame, rgba)
+		frameRGBAs[0] = img.Value{
 			Type: img.ValueTypeRGBA,
 			Rgba: rgbaFrame,
-		})
+		}
 	} else if imgType == "gif" {
-
+		gifInstance, err := gif.DecodeAll(bytes.NewReader(core.FileBinary))
+		if err != nil {
+			panic(err)
+		}
+		frame = len(gifInstance.Image)
+		frameRGBAs = make([]img.Value, frame)
+		for frameIndex, imageInstance := range gifInstance.Image {
+			rgbaFrame := make([]img.RGBA, height*width)
+			bounds := imageInstance.Bounds()
+			rgba := image.NewRGBA(bounds)
+			draw.Draw(rgba, bounds, imageInstance, bounds.Min, draw.Src)
+			readImageRGBA(width, height, &bounds, &rgbaFrame, rgba)
+			frameRGBAs[frameIndex] = img.Value{
+				Type: img.ValueTypeRGBA,
+				Rgba: rgbaFrame,
+			}
+		}
 	}
 
 	return map[string]img.Value{

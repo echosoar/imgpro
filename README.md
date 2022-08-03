@@ -87,19 +87,19 @@ func main() {
 
 ### Features
 
-| Features | Attribute | PNG | JPG | GIF | BMP | WebP |
-| --- | --- | :---: | :---: | :---: | :---: | :---: | 
-| File Size | size | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Format Detect | type | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Width/Height| wh | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Frames | frame | ✅ | ✅ |
-| Color data | rgba | ✅ | ✅ |
-| Color proportion | hue | ✅ | ✅ |
+| Features | Attribute | PNG | JPG | GIF | BMP | WebP | HEIC | AVIF |
+| --- | --- | :---: | :---: | :---: | :---: | :---: |  :---: | :---: |
+| File Size | size | ✅ | ✅ | ✅ | ✅ | ✅ |||
+| Format Detect | type | ✅ | ✅ | ✅ | ✅ | ✅ |||
+| Width/Height| wh | ✅ | ✅ | ✅ | ✅ | ✅ ||
+| Frames | frame | ✅ | ✅ | ✅  |
+| Color data | rgba | ✅ | ✅ | ✅ |
+| Color proportion | hue | ✅ | ✅ | ✅ |
+| QR Code | qrcode | ✅ | ✅| ✅ | | |
 | Exif | exif |  | ✅ |
 | Create Time | time | |✅ | | | |
 | Position(GPS) Info | position | |✅  | | | |
 | Device Info | device | | ✅| | | |
-| QR Code | qrcode | ✅ | ✅| | | |
 
 ---
 

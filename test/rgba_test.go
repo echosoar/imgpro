@@ -37,3 +37,10 @@ func TestRGBAJpg(t *testing.T) {
 		t.Fatal("rgba jpeg b error")
 	}
 }
+
+func TestRGBAGif(t *testing.T) {
+	result := Run("./imgs/cool.gif", []string{"rgba", "frame"})
+	if result["frame"].Int != 13 {
+		t.Fatal("rgba gif frames error", result["frame"].Int)
+	}
+}
