@@ -19,11 +19,11 @@ func RGBAProcessor(imgCore *img.Core) {
 }
 
 func readImageRGBA(width, height int, bounds *image.Rectangle, rgbaFrameRef *[]img.RGBA, rgba *image.RGBA) {
+	colorIndex := 0
 	for line := 0; line < height; line++ {
 		for col := 0; col < width; col++ {
 			itemIndex := line*width + col
-			index := itemIndex * 4
-			if line < bounds.Min.Y || line > bounds.Min.Y || col < bounds.Min.X || col > bounds.Max.X {
+			if line < bounds.Min.Y || line >= bounds.Max.Y || col < bounds.Min.X || col >= bounds.Max.X {
 				(*rgbaFrameRef)[itemIndex] = img.RGBA{
 					R: 0,
 					G: 0,
@@ -31,6 +31,8 @@ func readImageRGBA(width, height int, bounds *image.Rectangle, rgbaFrameRef *[]i
 					A: 0,
 				}
 			} else {
+				index := colorIndex * 4
+				colorIndex++
 				(*rgbaFrameRef)[itemIndex] = img.RGBA{
 					R: int(rgba.Pix[index]),
 					G: int(rgba.Pix[index+1]),
