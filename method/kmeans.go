@@ -75,7 +75,12 @@ func (k *KMeans) calcCenter() bool {
 			pointColors := make([]int, 4)
 			for index := range pointColors {
 				attrRange := k.valueRange[index]
-				pointColors[index] = attrRange.Min + rand.Intn(attrRange.Max-attrRange.Min)
+				diff := attrRange.Max - attrRange.Min
+				if diff > 0 {
+					pointColors[index] = attrRange.Min + rand.Intn(diff)
+				} else {
+					pointColors[index] = attrRange.Min
+				}
 			}
 			k.Center[i] = ColorListToRGBA(pointColors)
 			isNewCenter = true
@@ -96,7 +101,12 @@ func (k *KMeans) initCenter() {
 	for i := 0; i < need; i++ {
 		point := make([]int, 4)
 		for attrIndex, attrRange := range k.valueRange {
-			point[attrIndex] = attrRange.Min + rand.Intn(attrRange.Max-attrRange.Min)
+			diff := attrRange.Max - attrRange.Min
+			if diff > 0 {
+				point[attrIndex] = attrRange.Min + rand.Intn(diff)
+			} else {
+				point[attrIndex] = attrRange.Min
+			}
 		}
 		k.Center = append(k.Center, ColorListToRGBA(point))
 	}
