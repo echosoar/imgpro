@@ -435,10 +435,12 @@ func (qr *QRCode) binarization() {
 	thresholds200 := 200 * thresholds
 	qtPi := qrThresholdTDiff100 / thresholds200
 
+	rowAverage := make([]int, qr.Width)
 	for line := 0; line < qr.Height; line++ {
 		lineStartPixelIndex := qr.Width * line
-		// rowGreyPixels := qr.greyPixels[lineStartPixelIndex : lineStartPixelIndex+qr.Width]
-		rowAverage := make([]int, qr.Width)
+		for i := range rowAverage {
+			rowAverage[i] = 0
+		}
 		for row := 0; row < qr.Width; row++ {
 			var w, u int
 			if line&1 == 1 {
@@ -570,54 +572,69 @@ func (qr *QRCode) regionCode(line, row int) int {
 	region.size = 0
 	region.cornersIndex = -1
 
-	qr.fillRegion(row, line, pixel, regionIndex, region, 0)
+	qr.fillRegion(row, line, pixel, regionIndex, region)
 	return regionIndex
 }
 
-func (qr *QRCode) fillRegion(row, line, pixel, regionIndex int, region *QRCodeRegion, depth int) {
-	left := row
-	right := row
-	rowGreyPixels := qr.greyPixels[line*qr.Width : line*qr.Width+qr.Width]
+type fillRegionPoint struct{ row, line int }
 
-	if depth >= 1024 {
-		return
-	}
+func (qr *QRCode) fillRegion(startRow, startLine, pixel, regionIndex int, region *QRCodeRegion) {
+	stack := []fillRegionPoint{{startRow, startLine}}
 
-	// 如果左边的像素和自己一样，就向左移动
-	for left > 0 && int(rowGreyPixels[left-1]) == pixel {
-		left--
-	}
-	// 如果右边的像素和自己一样，就向左移动
-	for right < qr.Width-1 && int(rowGreyPixels[right+1]) == pixel {
-		right++
-	}
+	for len(stack) > 0 {
+		n := len(stack) - 1
+		curr := stack[n]
+		stack = stack[:n]
 
-	changedPixel := 0
-	// 填充
-	for i := left; i <= right; i++ {
-		newPixel := regionIndex
-		if rowGreyPixels[i] != newPixel {
-			rowGreyPixels[i] = regionIndex
-			changedPixel++
-		}
-	}
-
-	if changedPixel <= 0 {
-		return
-	}
-	region.size += changedPixel
-
-	// 往上面一行、下面一行进行检测
-	lineAutoCheck := []int{-1, 1}
-	for _, lineDiff := range lineAutoCheck {
-		newLine := line + lineDiff
-		if newLine <= 0 || newLine >= qr.Height {
+		row, line := curr.row, curr.line
+		if line < 0 || line >= qr.Height {
 			continue
 		}
-		rowGreyPixels := qr.greyPixels[newLine*qr.Width : newLine*qr.Width+qr.Width]
+
+		rowGreyPixels := qr.greyPixels[line*qr.Width : line*qr.Width+qr.Width]
+		if rowGreyPixels[row] != pixel {
+			continue
+		}
+
+		// 如果左边的像素和自己一样，就向左移动
+		left := row
+		for left > 0 && rowGreyPixels[left-1] == pixel {
+			left--
+		}
+		// 如果右边的像素和自己一样，就向右移动
+		right := row
+		for right < qr.Width-1 && rowGreyPixels[right+1] == pixel {
+			right++
+		}
+
+		// 填充
+		changedPixel := 0
 		for i := left; i <= right; i++ {
-			if int(rowGreyPixels[i]) == pixel {
-				qr.fillRegion(i, newLine, pixel, regionIndex, region, depth+1)
+			if rowGreyPixels[i] == pixel {
+				rowGreyPixels[i] = regionIndex
+				changedPixel++
+			}
+		}
+
+		if changedPixel <= 0 {
+			continue
+		}
+		region.size += changedPixel
+
+		// 往上面一行、下面一行进行检测，只需要添加每段连续像素的起始点
+		for _, lineDiff := range []int{-1, 1} {
+			newLine := line + lineDiff
+			if newLine < 0 || newLine >= qr.Height {
+				continue
+			}
+			nextRowPixels := qr.greyPixels[newLine*qr.Width : newLine*qr.Width+qr.Width]
+			wasPixel := false
+			for i := left; i <= right; i++ {
+				isPixel := nextRowPixels[i] == pixel
+				if isPixel && !wasPixel {
+					stack = append(stack, fillRegionPoint{i, newLine})
+				}
+				wasPixel = isPixel
 			}
 		}
 	}
@@ -1110,282 +1127,38 @@ func (qr *QRCode) getVersion(qrItem *QRCodeItem) int {
 	return version
 }
 
-var autoAdjustmentMatrixChangeIndex = [][]int{
-	{0},
-	{1},
-	{2},
-	{3},
-	{4},
-	{5},
-	{6},
-	{7},
-	{0, 1},
-	{0, 2},
-	{0, 3},
-	{0, 4},
-	{0, 5},
-	{0, 6},
-	{0, 7},
-	{1, 2},
-	{1, 3},
-	{1, 4},
-	{1, 5},
-	{1, 6},
-	{1, 7},
-	{2, 3},
-	{2, 4},
-	{2, 5},
-	{2, 6},
-	{2, 7},
-	{3, 4},
-	{3, 5},
-	{3, 6},
-	{3, 7},
-	{4, 5},
-	{4, 6},
-	{4, 7},
-	{5, 6},
-	{5, 7},
-	{6, 7},
-	{0, 1, 2},
-	{0, 1, 3},
-	{0, 1, 4},
-	{0, 1, 5},
-	{0, 1, 6},
-	{0, 1, 7},
-	{0, 2, 3},
-	{0, 2, 4},
-	{0, 2, 5},
-	{0, 2, 6},
-	{0, 2, 7},
-	{0, 3, 4},
-	{0, 3, 5},
-	{0, 3, 6},
-	{0, 3, 7},
-	{0, 4, 5},
-	{0, 4, 6},
-	{0, 4, 7},
-	{0, 5, 6},
-	{0, 5, 7},
-	{0, 6, 7},
-	{1, 2, 3},
-	{1, 2, 4},
-	{1, 2, 5},
-	{1, 2, 6},
-	{1, 2, 7},
-	{1, 3, 4},
-	{1, 3, 5},
-	{1, 3, 6},
-	{1, 3, 7},
-	{1, 4, 5},
-	{1, 4, 6},
-	{1, 4, 7},
-	{1, 5, 6},
-	{1, 5, 7},
-	{1, 6, 7},
-	{2, 3, 4},
-	{2, 3, 5},
-	{2, 3, 6},
-	{2, 3, 7},
-	{2, 4, 5},
-	{2, 4, 6},
-	{2, 4, 7},
-	{2, 5, 6},
-	{2, 5, 7},
-	{2, 6, 7},
-	{3, 4, 5},
-	{3, 4, 6},
-	{3, 4, 7},
-	{3, 5, 6},
-	{3, 5, 7},
-	{3, 6, 7},
-	{4, 5, 6},
-	{4, 5, 7},
-	{4, 6, 7},
-	{5, 6, 7},
-	{0, 1, 2, 3},
-	{0, 1, 2, 4},
-	{0, 1, 2, 5},
-	{0, 1, 2, 6},
-	{0, 1, 2, 7},
-	{0, 1, 3, 4},
-	{0, 1, 3, 5},
-	{0, 1, 3, 6},
-	{0, 1, 3, 7},
-	{0, 1, 4, 5},
-	{0, 1, 4, 6},
-	{0, 1, 4, 7},
-	{0, 1, 5, 6},
-	{0, 1, 5, 7},
-	{0, 1, 6, 7},
-	{0, 2, 3, 4},
-	{0, 2, 3, 5},
-	{0, 2, 3, 6},
-	{0, 2, 3, 7},
-	{0, 2, 4, 5},
-	{0, 2, 4, 6},
-	{0, 2, 4, 7},
-	{0, 2, 5, 6},
-	{0, 2, 5, 7},
-	{0, 2, 6, 7},
-	{0, 3, 4, 5},
-	{0, 3, 4, 6},
-	{0, 3, 4, 7},
-	{0, 3, 5, 6},
-	{0, 3, 5, 7},
-	{0, 3, 6, 7},
-	{0, 4, 5, 6},
-	{0, 4, 5, 7},
-	{0, 4, 6, 7},
-	{0, 5, 6, 7},
-	{1, 2, 3, 4},
-	{1, 2, 3, 5},
-	{1, 2, 3, 6},
-	{1, 2, 3, 7},
-	{1, 2, 4, 5},
-	{1, 2, 4, 6},
-	{1, 2, 4, 7},
-	{1, 2, 5, 6},
-	{1, 2, 5, 7},
-	{1, 2, 6, 7},
-	{1, 3, 4, 5},
-	{1, 3, 4, 6},
-	{1, 3, 4, 7},
-	{1, 3, 5, 6},
-	{1, 3, 5, 7},
-	{1, 3, 6, 7},
-	{1, 4, 5, 6},
-	{1, 4, 5, 7},
-	{1, 4, 6, 7},
-	{1, 5, 6, 7},
-	{2, 3, 4, 5},
-	{2, 3, 4, 6},
-	{2, 3, 4, 7},
-	{2, 3, 5, 6},
-	{2, 3, 5, 7},
-	{2, 3, 6, 7},
-	{2, 4, 5, 6},
-	{2, 4, 5, 7},
-	{2, 4, 6, 7},
-	{2, 5, 6, 7},
-	{3, 4, 5, 6},
-	{3, 4, 5, 7},
-	{3, 4, 6, 7},
-	{3, 5, 6, 7},
-	{4, 5, 6, 7},
-	{0, 1, 2, 3, 4},
-	{0, 1, 2, 3, 5},
-	{0, 1, 2, 3, 6},
-	{0, 1, 2, 3, 7},
-	{0, 1, 2, 4, 5},
-	{0, 1, 2, 4, 6},
-	{0, 1, 2, 4, 7},
-	{0, 1, 2, 5, 6},
-	{0, 1, 2, 5, 7},
-	{0, 1, 2, 6, 7},
-	{0, 1, 3, 4, 5},
-	{0, 1, 3, 4, 6},
-	{0, 1, 3, 4, 7},
-	{0, 1, 3, 5, 6},
-	{0, 1, 3, 5, 7},
-	{0, 1, 3, 6, 7},
-	{0, 1, 4, 5, 6},
-	{0, 1, 4, 5, 7},
-	{0, 1, 4, 6, 7},
-	{0, 1, 5, 6, 7},
-	{0, 2, 3, 4, 5},
-	{0, 2, 3, 4, 6},
-	{0, 2, 3, 4, 7},
-	{0, 2, 3, 5, 6},
-	{0, 2, 3, 5, 7},
-	{0, 2, 3, 6, 7},
-	{0, 2, 4, 5, 6},
-	{0, 2, 4, 5, 7},
-	{0, 2, 4, 6, 7},
-	{0, 2, 5, 6, 7},
-	{0, 3, 4, 5, 6},
-	{0, 3, 4, 5, 7},
-	{0, 3, 4, 6, 7},
-	{0, 3, 5, 6, 7},
-	{0, 4, 5, 6, 7},
-	{1, 2, 3, 4, 5},
-	{1, 2, 3, 4, 6},
-	{1, 2, 3, 4, 7},
-	{1, 2, 3, 5, 6},
-	{1, 2, 3, 5, 7},
-	{1, 2, 3, 6, 7},
-	{1, 2, 4, 5, 6},
-	{1, 2, 4, 5, 7},
-	{1, 2, 4, 6, 7},
-	{1, 2, 5, 6, 7},
-	{1, 3, 4, 5, 6},
-	{1, 3, 4, 5, 7},
-	{1, 3, 4, 6, 7},
-	{1, 3, 5, 6, 7},
-	{1, 4, 5, 6, 7},
-	{2, 3, 4, 5, 6},
-	{2, 3, 4, 5, 7},
-	{2, 3, 4, 6, 7},
-	{2, 3, 5, 6, 7},
-	{2, 4, 5, 6, 7},
-	{3, 4, 5, 6, 7},
-	{0, 1, 2, 3, 4, 5},
-	{0, 1, 2, 3, 4, 6},
-	{0, 1, 2, 3, 4, 7},
-	{0, 1, 2, 3, 5, 6},
-	{0, 1, 2, 3, 5, 7},
-	{0, 1, 2, 3, 6, 7},
-	{0, 1, 2, 4, 5, 6},
-	{0, 1, 2, 4, 5, 7},
-	{0, 1, 2, 4, 6, 7},
-	{0, 1, 2, 5, 6, 7},
-	{0, 1, 3, 4, 5, 6},
-	{0, 1, 3, 4, 5, 7},
-	{0, 1, 3, 4, 6, 7},
-	{0, 1, 3, 5, 6, 7},
-	{0, 1, 4, 5, 6, 7},
-	{0, 2, 3, 4, 5, 6},
-	{0, 2, 3, 4, 5, 7},
-	{0, 2, 3, 4, 6, 7},
-	{0, 2, 3, 5, 6, 7},
-	{0, 2, 4, 5, 6, 7},
-	{0, 3, 4, 5, 6, 7},
-	{1, 2, 3, 4, 5, 6},
-	{1, 2, 3, 4, 5, 7},
-	{1, 2, 3, 4, 6, 7},
-	{1, 2, 3, 5, 6, 7},
-	{1, 2, 4, 5, 6, 7},
-	{1, 3, 4, 5, 6, 7},
-	{2, 3, 4, 5, 6, 7},
-	{0, 1, 2, 3, 4, 5, 6},
-	{0, 1, 2, 3, 4, 5, 7},
-	{0, 1, 2, 3, 4, 6, 7},
-	{0, 1, 2, 3, 5, 6, 7},
-	{0, 1, 2, 4, 5, 6, 7},
-	{0, 1, 3, 4, 5, 6, 7},
-	{0, 2, 3, 4, 5, 6, 7},
-	{1, 2, 3, 4, 5, 6, 7},
-	{0, 1, 2, 3, 4, 5, 6, 7},
-}
-
-// 自动调整矩阵
+// 自动调整矩阵，使用坐标下降法逐步优化透视矩阵的各个参数
 func (qr *QRCode) autoAdjustmentMatrix(qrItem *QRCodeItem, matrix *[]float64) int {
 	score := qr.scoreMatrix(qrItem, matrix)
 
-	matrixValue := *matrix
-	step := 0.02
-	for _, changeIndexList := range autoAdjustmentMatrixChangeIndex {
-		for changePercent := -0.5; changePercent < 0.5; changePercent += step {
-			newMatrixValue := make([]float64, len(matrixValue))
-			copy(newMatrixValue, matrixValue)
-			for _, index := range changeIndexList {
-				newMatrixValue[index] *= changePercent
-			}
+	// perturb computes a non-zero delta: relative when origVal != 0, absolute otherwise.
+	perturb := func(origVal, relStep float64) float64 {
+		if origVal != 0 {
+			return origVal * relStep
+		}
+		return relStep
+	}
 
-			testScore := qr.scoreMatrix(qrItem, &newMatrixValue)
-			if testScore > score {
-				score = testScore
-				*matrix = newMatrixValue
+	// 从粗到细的多尺度相对步长，覆盖从大范围到精细的调整
+	for _, relStep := range []float64{0.5, 0.2, 0.1, 0.05, 0.02, 0.005} {
+		for {
+			improved := false
+			for idx := 0; idx < len(*matrix); idx++ {
+				origVal := (*matrix)[idx]
+				// 尝试正向和反向缩放
+				for _, sign := range []float64{1, -1} {
+					(*matrix)[idx] = origVal + sign*perturb(origVal, relStep)
+					if s := qr.scoreMatrix(qrItem, matrix); s > score {
+						score = s
+						improved = true
+						origVal = (*matrix)[idx]
+						break
+					}
+					(*matrix)[idx] = origVal
+				}
+			}
+			if !improved {
+				break
 			}
 		}
 	}
@@ -1469,7 +1242,7 @@ func (qr *QRCode) scoreAlignPattern(qrItem *QRCodeItem, matrix *[]float64) int {
 	return 0
 }
 
-// 给区域打分
+// 给区域打分：像素颜色与预期颜色匹配时得分
 func (qr *QRCode) scoreArea(qrItem *QRCodeItem, matrix *[]float64, fromX, fromY, targetX, targetY int, isBlack bool) int {
 	score := 0
 	for x := fromX; x < targetX; x++ {
@@ -1479,18 +1252,9 @@ func (qr *QRCode) scoreArea(qrItem *QRCodeItem, matrix *[]float64, fromX, fromY,
 				return 0
 			}
 			index := point.Y*qr.Width + point.X
-			if qr.greyPixels[index] != 0 {
-				if !isBlack {
-					score++
-				} else {
-					// score--
-				}
-			} else {
-				if isBlack {
-					// score--
-				} else {
-					score++
-				}
+			pixelIsBlack := qr.greyPixels[index] != 0
+			if pixelIsBlack == isBlack {
+				score++
 			}
 		}
 	}
@@ -1810,7 +1574,7 @@ func (qrItem *QRCodeItem) read8BitByteData() error {
 	}
 	qrItem.currentReadIndex = dataStartIndex
 	// UTF-8BOM 头
-	if result[0] == byte(239) && result[1] == byte(187) && result[2] == byte(191) {
+	if len(result) >= 3 && result[0] == byte(239) && result[1] == byte(187) && result[2] == byte(191) {
 		result = result[3:]
 	}
 	qrItem.result = img.Value{
