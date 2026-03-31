@@ -7,6 +7,8 @@ import (
 	"image/gif"
 
 	img "github.com/echosoar/imgpro/core"
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/webp"
 )
 
 // RGBAProcessor bin size processor
@@ -52,7 +54,7 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 	frame := 0
 	frameRGBAs := []img.Value{}
 
-	if imgType == "png" || imgType == "jpg" {
+	if imgType == "png" || imgType == "jpg" || imgType == "webp" || imgType == "bmp" {
 		frame = 1
 		frameRGBAs = make([]img.Value, 1)
 		originalImage, _, err := image.Decode(bytes.NewReader(core.FileBinary))
@@ -80,6 +82,26 @@ func rgbaRunner(core *img.Core) map[string]img.Value {
 			bounds := imageInstance.Bounds()
 			rgba := image.NewRGBA(bounds)
 			draw.Draw(rgba, bounds, imageInstance, bounds.Min, draw.Src)
+			readImageRGBA(width, height, &bounds, &rgbaFrame, rgba)
+			frameRGBAs[frameIndex] = img.Value{
+				Type: img.ValueTypeRGBA,
+				Rgba: rgbaFrame,
+			}
+		}
+	} else if imgType == "apng" {
+		apngFrames, ihdrChunk, ancillaryChunks := parseAPNGFrames(core.FileBinary)
+		frame = len(apngFrames)
+		frameRGBAs = make([]img.Value, frame)
+		for frameIndex, apngF := range apngFrames {
+			framePNG := buildAPNGFramePNG(apngF, ihdrChunk, ancillaryChunks)
+			frameImg, _, err := image.Decode(bytes.NewReader(framePNG))
+			if err != nil {
+				continue
+			}
+			rgbaFrame := make([]img.RGBA, height*width)
+			bounds := image.Rect(apngF.xOffset, apngF.yOffset, apngF.xOffset+apngF.width, apngF.yOffset+apngF.height)
+			rgba := image.NewRGBA(bounds)
+			draw.Draw(rgba, bounds, frameImg, frameImg.Bounds().Min, draw.Src)
 			readImageRGBA(width, height, &bounds, &rgbaFrame, rgba)
 			frameRGBAs[frameIndex] = img.Value{
 				Type: img.ValueTypeRGBA,
