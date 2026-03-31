@@ -46,3 +46,10 @@ func TestTypeWebp88(t *testing.T) {
 		t.Fatal("type error")
 	}
 }
+
+func TestTypeApng(t *testing.T) {
+	result := Run("./imgs/cool.apng", []string{"type"})
+	if result["type"].String != "apng" {
+		t.Fatal("type error", result["type"].String)
+	}
+}

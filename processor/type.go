@@ -2,6 +2,7 @@ package processor
 
 import (
 	"bytes"
+	"encoding/binary"
 
 	img "github.com/echosoar/imgpro/core"
 )
@@ -24,7 +25,11 @@ func typeRunner(core *img.Core) map[string]img.Value {
 	} else if bytes.HasPrefix(fileBytes, []byte("GIF87a")) || bytes.HasPrefix(fileBytes, []byte("GIF89a")) {
 		imgType = "gif"
 	} else if bytes.HasPrefix(fileBytes, []byte("\x89PNG\x0D\x0A\x1A\x0A")) {
-		imgType = "png"
+		if isPNGAnimated(fileBytes) {
+			imgType = "apng"
+		} else {
+			imgType = "png"
+		}
 	} else if bytes.HasPrefix(fileBytes, []byte("\xFF\xD8\xFF")) {
 		imgType = "jpg"
 	} else if len(fileBytes) >= 14 {
@@ -49,4 +54,22 @@ func typeRunner(core *img.Core) map[string]img.Value {
 			String: imgType,
 		},
 	}
+}
+
+// isPNGAnimated returns true if the PNG data contains an acTL chunk, identifying it as APNG.
+func isPNGAnimated(fileBytes []byte) bool {
+	offset := 8 // skip PNG signature
+	for offset+12 <= len(fileBytes) {
+		chunkLen := int(binary.BigEndian.Uint32(fileBytes[offset : offset+4]))
+		chunkType := string(fileBytes[offset+4 : offset+8])
+		if chunkType == "acTL" {
+			return true
+		}
+		// Stop searching after the first IDAT or IEND chunk
+		if chunkType == "IDAT" || chunkType == "IEND" {
+			return false
+		}
+		offset += 12 + chunkLen
+	}
+	return false
 }

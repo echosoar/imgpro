@@ -29,7 +29,7 @@ func whRunner(core *img.Core) map[string]img.Value {
 	height := 0
 	fileBytes := core.FileBinary
 
-	if imgType == "png" || imgType == "jpg" || imgType == "gif" {
+	if imgType == "png" || imgType == "apng" || imgType == "jpg" || imgType == "gif" {
 		image, _, err := image.DecodeConfig(bytes.NewReader(core.FileBinary))
 		if err != nil {
 			panic(err)

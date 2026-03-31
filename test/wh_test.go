@@ -55,6 +55,15 @@ func TestWHWebp32(t *testing.T) {
 		t.Fatal("webp height error")
 	}
 }
+func TestWHApng(t *testing.T) {
+	result := Run("./imgs/cool.apng", []string{"width", "height"})
+	if result["width"].Int != 4 {
+		t.Fatal("apng width error")
+	}
+	if result["height"].Int != 4 {
+		t.Fatal("apng height error")
+	}
+}
 func TestWHWebp88(t *testing.T) {
 	result := Run("./imgs/cool_88.webp", []string{"width", "height"})
 	if result["width"].Int != 300 {
